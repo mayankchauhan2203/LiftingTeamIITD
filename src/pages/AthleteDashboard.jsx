@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import SessionsSection from '../components/SessionsSection'
 import AttendanceScanner from '../components/AttendanceScanner'
+import AttendanceQRModal from '../components/AttendanceQRModal'
 import WorkoutCard from '../components/WorkoutCard'
 import { supabase } from '../lib/supabase'
-import { fetchPlansByDate, subscribeToWorkoutChanges, todayString } from '../services/workoutService'
+import { fetchPlansByDate, subscribeToWorkoutChanges, todayString, updateAttendanceStatus } from '../services/workoutService'
 import { fetchUserAttendanceForPlan, subscribeToAttendance } from '../services/attendanceService'
 import { ATHLETES, TEAM_ACTIVITY, UPCOMING_SESSIONS } from '../data/mockData'
 
@@ -76,7 +77,9 @@ function useTodayPlan(userId) {
 
 /* ── Schedule section ────────────────────────────────── */
 function Schedule({ user, onScanQR }) {
+  const isCapt = user.role === 'captain'
   const { plan, myRecords, loading } = useTodayPlan(user.username)
+  const [qrModal, setQrModal] = useState(null)
 
   const hasCheckin  = myRecords.some(r => r.phase === 'checkin')
   const hasCheckout = myRecords.some(r => r.phase === 'checkout')
@@ -85,17 +88,41 @@ function Schedule({ user, onScanQR }) {
   const canScanCheckin  = isCheckinOpen  && !hasCheckin
   const canScanCheckout = isCheckoutOpen && !hasCheckout
 
+  async function handleStatusUpdate(planId, newStatus) {
+    try {
+      await updateAttendanceStatus(planId, newStatus)
+      if (newStatus === 'checkin_open' || newStatus === 'checkout_open') {
+        const phase = newStatus === 'checkin_open' ? 'checkin' : 'checkout'
+        setQrModal({ planId, phase, title: plan?.title ?? '' })
+      }
+      if ((newStatus === 'checkin_done' || newStatus === 'done') && qrModal?.planId === planId) {
+        setQrModal(null)
+      }
+    } catch {
+      alert('Failed to update attendance status. Please try again.')
+    }
+  }
+
   if (loading) return <div className="placeholder-section"><p>Loading…</p></div>
 
   return (
     <>
-      {/* Scan banner */}
+      {qrModal && (
+        <AttendanceQRModal
+          planId={qrModal.planId}
+          phase={qrModal.phase}
+          title={qrModal.title}
+          onClose={() => setQrModal(null)}
+        />
+      )}
+
+      {/* Scan banner — shown to all athletes (including captain) when attendance is open */}
       {(canScanCheckin || canScanCheckout) && (
         <div className="scan-banner">
           <div>
             <strong>⚡ {canScanCheckin ? 'Check-in' : 'Check-out'} is open!</strong>
             <p style={{ fontSize: 13, marginTop: 3, color: 'var(--text-secondary)' }}>
-              Scan the QR code shown by your coach/captain.
+              {isCapt ? 'Use the QR controls below or scan to mark your own attendance.' : 'Scan the QR code shown by your coach/captain.'}
             </p>
           </div>
           <button className="btn-gold" onClick={onScanQR}>📷 Scan QR</button>
@@ -113,7 +140,12 @@ function Schedule({ user, onScanQR }) {
           <p>No workout scheduled for today.</p>
         </div>
       ) : (
-        <WorkoutCard plan={plan} canControl={false} />
+        <WorkoutCard
+          plan={plan}
+          canControl={isCapt}
+          onOpenQR={phase => setQrModal({ planId: plan.id, phase, title: plan.title })}
+          onUpdateStatus={status => handleStatusUpdate(plan.id, status)}
+        />
       )}
 
       {/* My attendance status */}
