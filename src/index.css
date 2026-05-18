@@ -1848,11 +1848,28 @@ a { text-decoration: none; }
   flex-shrink: 0;
 }
 
+.set-repeat-sep {
+  font-size: 11px;
+  color: var(--border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
 .set-unit {
   font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
+
+.set-repeat-input {
+  width: 42px !important;
+  background: rgba(212,160,23,0.08) !important;
+  border-color: rgba(212,160,23,0.25) !important;
+  color: var(--accent-gold-light) !important;
+  font-weight: 600 !important;
+}
+
+.set-repeat-input:focus { border-color: var(--accent-gold) !important; }
 
 .remove-set-btn {
   width: 28px;

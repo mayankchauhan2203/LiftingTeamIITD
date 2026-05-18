@@ -54,9 +54,12 @@ function getSetsDisplay(ex) {
     return [ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
       .filter(Boolean).join(' · ')
   }
-  // New format: array of { reps, pct }
+  // New format: array of { reps, pct, repeat }
   if (!Array.isArray(ex.sets) || ex.sets.length === 0) return ''
-  return ex.sets.map(s => `${s.reps || '?'} × ${s.pct || '?'}%`).join('  ·  ')
+  return ex.sets.map(s => {
+    const base = `${s.reps || '?'} × ${s.pct || '?'}%`
+    return (s.repeat && s.repeat > 1) ? `${base} ×${s.repeat}` : base
+  }).join('   ·   ')
 }
 
 function formatCardDate(dateStr) {
@@ -162,10 +165,20 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
           {plan.exercises.map((ex, i) => (
             <div className="exercise-row" key={i}>
               <span className="exercise-name">{getExerciseName(ex)}</span>
+              {/* Sets line (standard exercises) */}
               {getSetsDisplay(ex) && (
                 <span className="exercise-detail">{getSetsDisplay(ex)}</span>
               )}
-              {ex.notes && <span className="exercise-notes">{ex.notes}</span>}
+              {/* Free-text description (Other type) */}
+              {ex.customDescription && (
+                <span className="exercise-notes">{ex.customDescription}</span>
+              )}
+              {/* Coach note */}
+              {ex.notes && (
+                <span className="exercise-notes" style={{ color: 'var(--accent-gold-light)', fontStyle: 'normal' }}>
+                  💬 {ex.notes}
+                </span>
+              )}
             </div>
           ))}
         </div>
