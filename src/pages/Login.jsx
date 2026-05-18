@@ -1,76 +1,121 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
+// ── TODO: replace with IITDLogin component once OAuth is approved ──────────
+// import IITDLogin from './IITDLogin'
+// export default IITDLogin
+// ─────────────────────────────────────────────────────────────────────────
+
+const DEMO_CREDS = [
+  { role: 'Coach',   cred: 'coach_verma / coach123'   },
+  { role: 'Captain', cred: 'arjun_s / captain123'     },
+  { role: 'Athlete', cred: 'rahul_k / athlete123'     },
+]
+
 export default function Login() {
-  const { loginWithIITD } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
+  const { login } = useAuth()
+  const [selectedRole, setSelectedRole] = useState('coach')
+  const [username, setUsername]         = useState('')
+  const [password, setPassword]         = useState('')
+  const [error, setError]               = useState('')
+  const [loading, setLoading]           = useState(false)
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const err = params.get('error')
-    if (err === 'auth_failed')    setError('IITD authentication was cancelled or failed. Please try again.')
-    if (err === 'state_mismatch') setError('Security check failed. Please try again.')
-    if (err === 'login_failed')   setError('Could not complete sign-in. You may not be registered in the team roster.')
-  }, [])
-
-  async function handleLogin() {
+  async function handleSubmit(e) {
+    e.preventDefault()
     setError('')
     setLoading(true)
-    try {
-      await loginWithIITD()
-      // page navigates away — no setLoading(false) needed
-    } catch {
-      setError('Failed to initiate sign-in. Please try again.')
+    await new Promise(r => setTimeout(r, 300))
+    const result = login(username.trim(), password, selectedRole)
+    if (!result.success) {
+      setError(result.error)
       setLoading(false)
     }
+  }
+
+  function switchRole(role) {
+    setSelectedRole(role)
+    setError('')
   }
 
   return (
     <div className="login-page">
       <div className="login-container">
-        {/* Brand */}
         <div className="login-brand">
           <span className="barbell-icon">🏋️</span>
           <h1>IIT Delhi Weightlifting</h1>
           <p>Athlete Progress Portal</p>
         </div>
 
-        {/* Card */}
         <div className="login-card">
+          <div className="role-tabs" role="tablist">
+            <button
+              className={`role-tab${selectedRole === 'coach' ? ' active' : ''}`}
+              onClick={() => switchRole('coach')}
+              role="tab"
+              aria-selected={selectedRole === 'coach'}
+            >
+              🎯 Coach
+            </button>
+            <button
+              className={`role-tab${selectedRole === 'athlete' ? ' active' : ''}`}
+              onClick={() => switchRole('athlete')}
+              role="tab"
+              aria-selected={selectedRole === 'athlete'}
+            >
+              💪 Athlete
+            </button>
+          </div>
+
           {error && <div className="login-error">{error}</div>}
 
-          <p className="login-sso-hint">
-            Sign in with your IITD Kerberos account to access the team portal.
-          </p>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="username">Username</label>
+              <input
+                id="username"
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="btn-login"
+              disabled={loading}
+            >
+              {loading
+                ? 'Signing in…'
+                : `Sign In as ${selectedRole === 'coach' ? 'Coach' : 'Athlete'}`}
+            </button>
+          </form>
 
-          <button
-            className="btn-iitd-login"
-            onClick={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner-sm" />
-                Redirecting…
-              </>
-            ) : (
-              <>
-                <img
-                  src="https://home.iitd.ac.in/uploads/logo-blue-bg.png"
-                  alt="IITD"
-                  className="iitd-logo-sm"
-                  onError={e => { e.currentTarget.style.display = 'none' }}
-                />
-                Login with IITD Credentials
-              </>
-            )}
-          </button>
-
-          <p className="login-help">
-            Only registered team members can log in.
-            Contact your coach if you cannot access the portal.
-          </p>
+          <div className="login-demo">
+            <strong>Demo Credentials</strong>
+            <div className="demo-creds">
+              {DEMO_CREDS.map(({ role, cred }) => (
+                <div key={role} className="demo-cred-row">
+                  <span className="demo-role-label">{role}</span>
+                  <span className="demo-cred-value">{cred}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
