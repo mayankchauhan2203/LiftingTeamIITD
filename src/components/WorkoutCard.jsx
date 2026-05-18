@@ -48,18 +48,24 @@ function getExerciseName(ex) {
   return prefix ? `${prefix} ${base}` : base
 }
 
-function getSetsDisplay(ex) {
-  // Legacy format
-  if (typeof ex.sets === 'string' || typeof ex.sets === 'number') {
-    return [ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
+// Returns array of chip labels, or a single legacy string, or null
+function getSetChips(ex) {
+  // Other type — no sets to show
+  if (ex.type === 'Other') return null
+  // Legacy format: { name, sets, reps, weight }
+  if (typeof ex.name === 'string') {
+    const txt = [ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
       .filter(Boolean).join(' · ')
+    return txt ? [txt] : null
   }
   // New format: array of { reps, pct, repeat }
-  if (!Array.isArray(ex.sets) || ex.sets.length === 0) return ''
+  if (!Array.isArray(ex.sets) || ex.sets.length === 0) return null
   return ex.sets.map(s => {
-    const base = `${s.reps || '?'} × ${s.pct || '?'}%`
-    return (s.repeat && s.repeat > 1) ? `${base} ×${s.repeat}` : base
-  }).join('   ·   ')
+    const r = s.repeat && Number(s.repeat) > 1 ? Number(s.repeat) : 1
+    const reps = s.reps || '?'
+    const pct  = s.pct  || '?'
+    return `${r}×${reps} @ ${pct}%`
+  })
 }
 
 function formatCardDate(dateStr) {
@@ -162,25 +168,30 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
       {/* Exercise list */}
       {plan.exercises && plan.exercises.length > 0 && (
         <div className="workout-exercises">
-          {plan.exercises.map((ex, i) => (
-            <div className="exercise-row" key={i}>
-              <span className="exercise-name">{getExerciseName(ex)}</span>
-              {/* Sets line (standard exercises) */}
-              {getSetsDisplay(ex) && (
-                <span className="exercise-detail">{getSetsDisplay(ex)}</span>
-              )}
-              {/* Free-text description (Other type) */}
-              {ex.customDescription && (
-                <span className="exercise-notes">{ex.customDescription}</span>
-              )}
-              {/* Coach note */}
-              {ex.notes && (
-                <span className="exercise-notes" style={{ color: 'var(--accent-gold-light)', fontStyle: 'normal' }}>
-                  💬 {ex.notes}
-                </span>
-              )}
-            </div>
-          ))}
+          {plan.exercises.map((ex, i) => {
+            const chips = getSetChips(ex)
+            return (
+              <div className="exercise-row" key={i}>
+                <span className="exercise-name">{getExerciseName(ex)}</span>
+                {/* Set chips */}
+                {chips && chips.length > 0 && (
+                  <div className="exercise-set-chips">
+                    {chips.map((chip, ci) => (
+                      <span className="exercise-set-chip" key={ci}>{chip}</span>
+                    ))}
+                  </div>
+                )}
+                {/* Free-text description (Other type) */}
+                {ex.customDescription && (
+                  <span className="exercise-notes">{ex.customDescription}</span>
+                )}
+                {/* Coach note */}
+                {ex.notes && (
+                  <span className="exercise-coach-note">💬 {ex.notes}</span>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

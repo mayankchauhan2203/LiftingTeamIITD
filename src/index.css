@@ -1383,6 +1383,31 @@ a { text-decoration: none; }
   font-style: italic;
 }
 
+.exercise-set-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.exercise-set-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(26,95,168,0.12);
+  color: #4d9de0;
+  border: 1px solid rgba(26,95,168,0.22);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.exercise-coach-note {
+  font-size: 11.5px;
+  color: var(--accent-gold-light);
+  margin-top: 2px;
+}
+
 /* ── Attendance list (inside WorkoutCard) ── */
 
 .att-list {
