@@ -1,38 +1,81 @@
 import { useState } from 'react'
 import { addWorkoutPlan, todayString } from '../services/workoutService'
 
-const EMPTY_EXERCISE = { name: '', sets: '', reps: '', weight: '', notes: '' }
+const PRIMARY_TYPES    = ['Snatch', 'C&J', 'Front Squat', 'Back Squat', 'Other']
+const VARIATION_TYPES  = ['Snatch', 'C&J']
+const VARIATIONS       = ['Standard', 'Power', 'Hang', 'Other']
+
+const emptySet      = () => ({ reps: '', pct: '' })
+const emptyExercise = () => ({
+  type: 'Snatch', customName: '',
+  variation: 'Standard', customVariation: '',
+  sets: [emptySet()],
+})
+
+function getExerciseLabel(ex) {
+  const base = ex.type === 'Other' ? (ex.customName || 'Exercise') : ex.type
+  if (!VARIATION_TYPES.includes(ex.type)) return base
+  if (ex.variation === 'Standard') return base
+  const prefix = ex.variation === 'Other' ? (ex.customVariation || '') : ex.variation
+  return prefix ? `${prefix} ${base}` : base
+}
 
 export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
   const [date,        setDate]        = useState(todayString())
   const [title,       setTitle]       = useState('')
   const [description, setDescription] = useState('')
-  const [exercises,   setExercises]   = useState([{ ...EMPTY_EXERCISE }])
+  const [exercises,   setExercises]   = useState([emptyExercise()])
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
 
-  function updateExercise(i, field, value) {
-    setExercises(prev => prev.map((ex, idx) => idx === i ? { ...ex, [field]: value } : ex))
+  /* ── exercise-level helpers ── */
+  function updateEx(i, patch) {
+    setExercises(prev => prev.map((ex, idx) => idx === i ? { ...ex, ...patch } : ex))
   }
-
   function addExercise() {
-    setExercises(prev => [...prev, { ...EMPTY_EXERCISE }])
+    setExercises(prev => [...prev, emptyExercise()])
   }
-
   function removeExercise(i) {
     setExercises(prev => prev.filter((_, idx) => idx !== i))
   }
 
+  /* ── set-level helpers ── */
+  function addSet(i) {
+    setExercises(prev => prev.map((ex, idx) =>
+      idx === i ? { ...ex, sets: [...ex.sets, emptySet()] } : ex
+    ))
+  }
+  function removeSet(i, si) {
+    setExercises(prev => prev.map((ex, idx) =>
+      idx === i ? { ...ex, sets: ex.sets.filter((_, sidx) => sidx !== si) } : ex
+    ))
+  }
+  function updateSet(i, si, field, value) {
+    setExercises(prev => prev.map((ex, idx) =>
+      idx === i
+        ? { ...ex, sets: ex.sets.map((s, sidx) => sidx === si ? { ...s, [field]: value } : s) }
+        : ex
+    ))
+  }
+
+  /* ── submit ── */
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!title.trim()) { setError('Title is required.'); return }
-    setSaving(true)
-    setError('')
+    if (!title.trim()) { setError('Session title is required.'); return }
+    setSaving(true); setError('')
     try {
-      const cleanExercises = exercises.filter(ex => ex.name.trim())
-      await addWorkoutPlan({ date, title: title.trim(), description: description.trim(), exercises: cleanExercises, createdBy })
+      const clean = exercises.filter(ex =>
+        ex.type !== 'Other' || ex.customName.trim()
+      )
+      await addWorkoutPlan({
+        date,
+        title: title.trim(),
+        description: description.trim(),
+        exercises: clean,
+        createdBy,
+      })
       onSaved()
-    } catch (err) {
+    } catch {
       setError('Failed to save. Check your Supabase connection.')
       setSaving(false)
     }
@@ -41,16 +84,15 @@ export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={e => e.stopPropagation()}>
-        {/* Header */}
+
         <div className="modal-header">
           <h2>🏋️ Add Workout Plan</h2>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            {error && <div className="alert alert-red" style={{ marginBottom: 16 }}>{error}</div>}
+            {error && <div className="alert alert-red">{error}</div>}
 
             {/* Date */}
             <div className="form-group">
@@ -70,7 +112,7 @@ export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
               />
             </div>
 
-            {/* Description */}
+            {/* Notes */}
             <div className="form-group">
               <label>Notes / Focus (optional)</label>
               <textarea
@@ -78,61 +120,127 @@ export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
                 placeholder="e.g. Focus on receiving position today"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                style={{ minHeight: 72 }}
+                style={{ minHeight: 68 }}
               />
             </div>
 
             {/* Exercises */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Exercises</label>
+
               <div className="exercise-form-list">
                 {exercises.map((ex, i) => (
                   <div className="exercise-form-item" key={i}>
-                    <div className="exercise-form-row">
-                      <input
-                        className="exercise-main-input"
-                        type="text"
-                        placeholder={`Exercise ${i + 1} name`}
-                        value={ex.name}
-                        onChange={e => updateExercise(i, 'name', e.target.value)}
-                      />
+
+                    {/* Header row: label + remove */}
+                    <div className="exercise-item-header">
+                      <span className="exercise-item-label">Exercise {i + 1}</span>
                       <button
                         type="button"
                         className="remove-exercise-btn"
                         onClick={() => removeExercise(i)}
                         disabled={exercises.length === 1}
                         aria-label="Remove exercise"
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                     </div>
-                    <div className="exercise-sub-inputs">
-                      <input
-                        type="text"
-                        placeholder="Sets"
-                        value={ex.sets}
-                        onChange={e => updateExercise(i, 'sets', e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Reps"
-                        value={ex.reps}
-                        onChange={e => updateExercise(i, 'reps', e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Weight / %"
-                        value={ex.weight}
-                        onChange={e => updateExercise(i, 'weight', e.target.value)}
-                      />
+
+                    {/* Type selector */}
+                    <div className="ex-pill-group">
+                      {PRIMARY_TYPES.map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`ex-pill${ex.type === t ? ' active' : ''}`}
+                          onClick={() => updateEx(i, { type: t, variation: 'Standard', customVariation: '' })}
+                        >{t}</button>
+                      ))}
                     </div>
-                    <input
-                      className="exercise-notes-input"
-                      type="text"
-                      placeholder="Notes (optional)"
-                      value={ex.notes}
-                      onChange={e => updateExercise(i, 'notes', e.target.value)}
-                    />
+
+                    {/* Custom name if Other */}
+                    {ex.type === 'Other' && (
+                      <input
+                        className="exercise-main-input"
+                        type="text"
+                        placeholder="Exercise name"
+                        value={ex.customName}
+                        onChange={e => updateEx(i, { customName: e.target.value })}
+                      />
+                    )}
+
+                    {/* Variation (Snatch / C&J only) */}
+                    {VARIATION_TYPES.includes(ex.type) && (
+                      <>
+                        <div className="ex-field-label">Variation</div>
+                        <div className="ex-pill-group">
+                          {VARIATIONS.map(v => (
+                            <button
+                              key={v}
+                              type="button"
+                              className={`ex-pill variation${ex.variation === v ? ' active' : ''}`}
+                              onClick={() => updateEx(i, { variation: v, customVariation: '' })}
+                            >{v}</button>
+                          ))}
+                        </div>
+                        {ex.variation === 'Other' && (
+                          <input
+                            className="exercise-main-input"
+                            type="text"
+                            placeholder="Specify variation (e.g. Block)"
+                            value={ex.customVariation}
+                            onChange={e => updateEx(i, { customVariation: e.target.value })}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* Sets */}
+                    <div className="ex-field-label" style={{ marginTop: 4 }}>
+                      Sets
+                      {ex.sets.length > 0 && (
+                        <span className="ex-set-summary"> — {getExerciseLabel(ex)}</span>
+                      )}
+                    </div>
+
+                    <div className="set-list">
+                      {ex.sets.map((s, si) => (
+                        <div className="set-row" key={si}>
+                          <span className="set-num">{si + 1}</span>
+                          <div className="set-inputs">
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="Reps"
+                              value={s.reps}
+                              onChange={e => updateSet(i, si, 'reps', e.target.value)}
+                            />
+                            <span className="set-sep">×</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="110"
+                              placeholder="%"
+                              value={s.pct}
+                              onChange={e => updateSet(i, si, 'pct', e.target.value)}
+                            />
+                            <span className="set-unit">%</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="remove-set-btn"
+                            onClick={() => removeSet(i, si)}
+                            disabled={ex.sets.length === 1}
+                            aria-label="Remove set"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="add-set-btn"
+                      onClick={() => addSet(i)}
+                    >+ Add Set</button>
+
                   </div>
                 ))}
               </div>
@@ -141,20 +249,19 @@ export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
                 type="button"
                 className="add-exercise-btn"
                 onClick={addExercise}
-              >
-                + Add Exercise
-              </button>
+                style={{ marginTop: 10 }}
+              >+ Add Exercise</button>
             </div>
           </div>
 
-          {/* Footer */}
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : '💾 Save Workout Plan'}
+              {saving ? 'Saving…' : '💾 Save Workout'}
             </button>
           </div>
         </form>
+
       </div>
     </div>
   )

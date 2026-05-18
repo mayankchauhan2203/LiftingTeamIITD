@@ -35,6 +35,30 @@ function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 }
 
+const VARIATION_TYPES = ['Snatch', 'C&J']
+
+function getExerciseName(ex) {
+  // Legacy format: { name, sets, reps, weight }
+  if (typeof ex.name === 'string') return ex.name
+  // New format
+  const base = ex.type === 'Other' ? (ex.customName || 'Exercise') : (ex.type || 'Exercise')
+  if (!VARIATION_TYPES.includes(ex.type)) return base
+  if (!ex.variation || ex.variation === 'Standard') return base
+  const prefix = ex.variation === 'Other' ? (ex.customVariation || '') : ex.variation
+  return prefix ? `${prefix} ${base}` : base
+}
+
+function getSetsDisplay(ex) {
+  // Legacy format
+  if (typeof ex.sets === 'string' || typeof ex.sets === 'number') {
+    return [ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
+      .filter(Boolean).join(' · ')
+  }
+  // New format: array of { reps, pct }
+  if (!Array.isArray(ex.sets) || ex.sets.length === 0) return ''
+  return ex.sets.map(s => `${s.reps || '?'} × ${s.pct || '?'}%`).join('  ·  ')
+}
+
 function formatCardDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   const today    = new Date(); today.setHours(0,0,0,0)
@@ -137,11 +161,10 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
         <div className="workout-exercises">
           {plan.exercises.map((ex, i) => (
             <div className="exercise-row" key={i}>
-              <span className="exercise-name">{ex.name}</span>
-              <span className="exercise-detail">
-                {[ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
-                  .filter(Boolean).join(' · ')}
-              </span>
+              <span className="exercise-name">{getExerciseName(ex)}</span>
+              {getSetsDisplay(ex) && (
+                <span className="exercise-detail">{getSetsDisplay(ex)}</span>
+              )}
               {ex.notes && <span className="exercise-notes">{ex.notes}</span>}
             </div>
           ))}
