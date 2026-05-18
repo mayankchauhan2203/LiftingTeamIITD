@@ -34,8 +34,9 @@ export async function fetchUserAttendanceForPlan(planId, userId) {
 
 /** Returns a Supabase channel — caller must call supabase.removeChannel(channel) on cleanup */
 export function subscribeToAttendance(planId, onchange) {
+  const uid = Math.random().toString(36).slice(2, 7)
   return supabase
-    .channel(`attendance_${planId}`)
+    .channel(`attendance_${planId}_${uid}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'attendance', filter: `plan_id=eq.${planId}` },

@@ -54,8 +54,9 @@ export async function updateAttendanceStatus(planId, status) {
 
 /** Returns a Supabase channel — caller must call supabase.removeChannel(channel) on cleanup */
 export function subscribeToWorkoutChanges(onchange) {
+  const uid = Math.random().toString(36).slice(2, 7)
   return supabase
-    .channel('workout_plans_rt')
+    .channel(`workout_plans_rt_${uid}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'workout_plans' }, onchange)
     .subscribe()
 }
