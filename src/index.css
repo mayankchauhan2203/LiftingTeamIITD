@@ -1383,6 +1383,103 @@ a { text-decoration: none; }
   font-style: italic;
 }
 
+/* ── Attendance list (inside WorkoutCard) ── */
+
+.att-list {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.att-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.att-list-header span:first-child {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-secondary);
+}
+
+.att-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.att-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 280px;
+}
+
+.att-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.att-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  vertical-align: middle;
+}
+
+.att-table tr:last-child td { border-bottom: none; }
+.att-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.att-athlete-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.att-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.att-time {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.att-time.done    { color: var(--green); }
+.att-time.pending { color: var(--text-muted); }
+
+/* ─────────────────────────────────────────────────────── */
+
 .workout-actions {
   display: flex;
   flex-wrap: wrap;

@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { fetchAttendanceForPlan, subscribeToAttendance } from '../services/attendanceService'
+
 const STATUS_CONFIG = {
   not_started: {
     label: 'Not Started',
@@ -27,6 +31,10 @@ const STATUS_CONFIG = {
   },
 }
 
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+}
+
 function formatCardDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   const today    = new Date(); today.setHours(0,0,0,0)
@@ -38,12 +46,81 @@ function formatCardDate(dateStr) {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+/* ── Attendance list (coach / captain only) ───────────── */
+function AttendanceList({ planId }) {
+  const [records, setRecords] = useState([])
+
+  useEffect(() => {
+    fetchAttendanceForPlan(planId).then(d => setRecords(d || [])).catch(() => {})
+    const channel = subscribeToAttendance(planId, () => {
+      fetchAttendanceForPlan(planId).then(d => setRecords(d || [])).catch(() => {})
+    })
+    return () => supabase.removeChannel(channel)
+  }, [planId])
+
+  // Merge checkin + checkout rows into one row per athlete
+  const byUser = {}
+  records.forEach(r => {
+    if (!byUser[r.user_id]) {
+      byUser[r.user_id] = { name: r.user_name, initials: r.user_initials, checkin: null, checkout: null }
+    }
+    byUser[r.user_id][r.phase] = r.marked_at
+  })
+  const athletes = Object.values(byUser)
+
+  if (athletes.length === 0) return null
+
+  return (
+    <div className="att-list">
+      <div className="att-list-header">
+        <span>Attendance</span>
+        <span className="att-count">{athletes.length} athlete{athletes.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="att-table-wrap">
+        <table className="att-table">
+          <thead>
+            <tr>
+              <th>Athlete</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+            </tr>
+          </thead>
+          <tbody>
+            {athletes.map(a => (
+              <tr key={a.name}>
+                <td>
+                  <div className="att-athlete-cell">
+                    <div className="att-avatar">{a.initials}</div>
+                    <span>{a.name}</span>
+                  </div>
+                </td>
+                <td>
+                  <span className={`att-time ${a.checkin ? 'done' : 'pending'}`}>
+                    {a.checkin ? fmtTime(a.checkin) : '—'}
+                  </span>
+                </td>
+                <td>
+                  <span className={`att-time ${a.checkout ? 'done' : 'pending'}`}>
+                    {a.checkout ? fmtTime(a.checkout) : '—'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/* ── WorkoutCard ──────────────────────────────────────── */
 export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpdateStatus }) {
   const cfg = STATUS_CONFIG[plan.attendance_status] ?? STATUS_CONFIG.not_started
+  const hasAttendance = plan.attendance_status !== 'not_started'
 
   return (
     <div className="workout-card">
-      {/* Header row */}
+      {/* Header */}
       <div className="workout-card-header">
         <div className="workout-card-meta">
           <span className="workout-card-date">{formatCardDate(plan.date)}</span>
@@ -71,7 +148,12 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
         </div>
       )}
 
-      {/* Action buttons (coach / captain only) */}
+      {/* Attendance list — coach / captain only, once check-in has started */}
+      {canControl && hasAttendance && (
+        <AttendanceList planId={plan.id} />
+      )}
+
+      {/* Action buttons */}
       {canControl && (
         <div className="workout-actions">
           {cfg.qrPhase && (
