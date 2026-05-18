@@ -6,4 +6,12 @@ export default defineConfig({
   optimizeDeps: {
     include: ['html5-qrcode'],
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })

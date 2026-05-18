@@ -219,6 +219,74 @@ a { text-decoration: none; }
 .btn-login:hover   { box-shadow: 0 4px 18px rgba(26,95,168,0.45); }
 .btn-login:active  { opacity: 0.88; }
 
+/* IITD SSO login button */
+.btn-iitd-login {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #1a3a6e, #1a5fa8);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: all 0.2s;
+  margin-top: 6px;
+  letter-spacing: 0.3px;
+  min-height: 52px;
+}
+.btn-iitd-login:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(26,95,168,0.5); transform: translateY(-1px); }
+.btn-iitd-login:active:not(:disabled) { opacity: 0.88; transform: none; }
+.btn-iitd-login:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.iitd-logo-sm {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.login-sso-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.login-help {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* Spinner (callback page) */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+.spinner-sm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .login-error {
   background: rgba(248,81,73,0.12);
   border: 1px solid rgba(248,81,73,0.35);

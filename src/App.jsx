@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
+import IITDCallback from './pages/IITDCallback'
 import CoachDashboard from './pages/CoachDashboard'
 import AthleteDashboard from './pages/AthleteDashboard'
 
@@ -24,6 +25,7 @@ function AppRoutes() {
             : <Login />
         }
       />
+      <Route path="/auth/callback" element={<IITDCallback />} />
       <Route
         path="/coach"
         element={
