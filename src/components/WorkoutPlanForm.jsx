@@ -199,7 +199,7 @@ export default function WorkoutPlanForm({ onClose, onSaved, createdBy }) {
                               <span className="set-num">{si + 1}</span>
                               <div className="set-inputs">
                                 <input
-                                  type="number" min="1"
+                                  type="text"
                                   placeholder="Reps"
                                   value={s.reps}
                                   onChange={e => updateSet(i, si, 'reps', e.target.value)}
