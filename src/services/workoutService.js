@@ -11,7 +11,7 @@ export async function addWorkoutPlan({ date, title, description, exercises, crea
     .from('workout_plans')
     .insert([{ date, title, description, exercises, created_by: createdBy, attendance_status: 'not_started' }])
     .select()
-  if (error) throw error
+  if (error) { console.error('[addWorkoutPlan]', error); throw error }
   return data[0]
 }
 
@@ -20,7 +20,7 @@ export async function fetchAllPlans() {
     .from('workout_plans')
     .select('*')
     .order('date', { ascending: false })
-  if (error) throw error
+  if (error) { console.error('[fetchAllPlans]', error); throw error }
   return data
 }
 
