@@ -1,26 +1,33 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
-// ── TODO: replace with IITDLogin component once OAuth is approved ──────────
-// import IITDLogin from './IITDLogin'
-// export default IITDLogin
-// ─────────────────────────────────────────────────────────────────────────
-
 const DEMO_CREDS = [
-  { role: 'Coach',   cred: 'coach_verma / coach123'   },
-  { role: 'Captain', cred: 'arjun_s / captain123'     },
-  { role: 'Athlete', cred: 'rahul_k / athlete123'     },
+  { role: 'Coach',   cred: 'coach_verma / coach123'  },
+  { role: 'Captain', cred: 'arjun_s / captain123'    },
+  { role: 'Athlete', cred: 'rahul_k / athlete123'    },
 ]
 
 export default function Login() {
-  const { login } = useAuth()
-  const [selectedRole, setSelectedRole] = useState('coach')
-  const [username, setUsername]         = useState('')
-  const [password, setPassword]         = useState('')
-  const [error, setError]               = useState('')
-  const [loading, setLoading]           = useState(false)
+  const { login, loginWithIITD } = useAuth()
 
-  async function handleSubmit(e) {
+  const [devOpen,       setDevOpen]       = useState(false)
+  const [selectedRole,  setSelectedRole]  = useState('coach')
+  const [username,      setUsername]      = useState('')
+  const [password,      setPassword]      = useState('')
+  const [error,         setError]         = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [iitdLoading,   setIitdLoading]   = useState(false)
+
+  async function handleIITDLogin() {
+    setIitdLoading(true)
+    try {
+      await loginWithIITD()
+    } catch {
+      setIitdLoading(false)
+    }
+  }
+
+  async function handleDevSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -30,11 +37,6 @@ export default function Login() {
       setError(result.error)
       setLoading(false)
     }
-  }
-
-  function switchRole(role) {
-    setSelectedRole(role)
-    setError('')
   }
 
   return (
@@ -47,75 +49,99 @@ export default function Login() {
         </div>
 
         <div className="login-card">
-          <div className="role-tabs" role="tablist">
+          <p className="login-subtitle">
+            Sign in with your IIT Delhi account to access the portal.
+          </p>
+
+          <button
+            className="btn-iitd-login"
+            onClick={handleIITDLogin}
+            disabled={iitdLoading}
+          >
+            {iitdLoading ? (
+              <span className="spinner-sm" />
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <rect width="40" height="40" rx="8" fill="#00205B"/>
+                <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold" fontFamily="sans-serif">IIT</text>
+              </svg>
+            )}
+            {iitdLoading ? 'Redirecting…' : 'Sign in with IITD'}
+          </button>
+
+          <div className="login-divider">
+            <span>or</span>
+          </div>
+
+          <div className="dev-login-toggle">
             <button
-              className={`role-tab${selectedRole === 'coach' ? ' active' : ''}`}
-              onClick={() => switchRole('coach')}
-              role="tab"
-              aria-selected={selectedRole === 'coach'}
+              className="dev-toggle-btn"
+              onClick={() => { setDevOpen(v => !v); setError('') }}
             >
-              🎯 Coach
-            </button>
-            <button
-              className={`role-tab${selectedRole === 'athlete' ? ' active' : ''}`}
-              onClick={() => switchRole('athlete')}
-              role="tab"
-              aria-selected={selectedRole === 'athlete'}
-            >
-              💪 Athlete
+              {devOpen ? '▲' : '▼'} Developer Login
             </button>
           </div>
 
-          {error && <div className="login-error">{error}</div>}
+          {devOpen && (
+            <div className="dev-login-section">
+              <div className="role-tabs" role="tablist">
+                {['coach', 'athlete'].map(r => (
+                  <button
+                    key={r}
+                    className={`role-tab${selectedRole === r ? ' active' : ''}`}
+                    onClick={() => { setSelectedRole(r); setError('') }}
+                    role="tab"
+                    aria-selected={selectedRole === r}
+                  >
+                    {r === 'coach' ? '🎯 Coach' : '💪 Athlete'}
+                  </button>
+                ))}
+              </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="username">Username</label>
-              <input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                autoComplete="username"
-                autoCapitalize="none"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn-login"
-              disabled={loading}
-            >
-              {loading
-                ? 'Signing in…'
-                : `Sign In as ${selectedRole === 'coach' ? 'Coach' : 'Athlete'}`}
-            </button>
-          </form>
+              {error && <div className="login-error">{error}</div>}
 
-          <div className="login-demo">
-            <strong>Demo Credentials</strong>
-            <div className="demo-creds">
-              {DEMO_CREDS.map(({ role, cred }) => (
-                <div key={role} className="demo-cred-row">
-                  <span className="demo-role-label">{role}</span>
-                  <span className="demo-cred-value">{cred}</span>
+              <form onSubmit={handleDevSubmit}>
+                <div className="form-group">
+                  <label htmlFor="dev-username">Username</label>
+                  <input
+                    id="dev-username"
+                    type="text"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    autoCapitalize="none"
+                    required
+                  />
                 </div>
-              ))}
+                <div className="form-group">
+                  <label htmlFor="dev-password">Password</label>
+                  <input
+                    id="dev-password"
+                    type="password"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn-login" disabled={loading}>
+                  {loading ? 'Signing in…' : `Sign In as ${selectedRole === 'coach' ? 'Coach' : 'Athlete'}`}
+                </button>
+              </form>
+
+              <div className="login-demo">
+                <strong>Demo Credentials</strong>
+                <div className="demo-creds">
+                  {DEMO_CREDS.map(({ role, cred }) => (
+                    <div key={role} className="demo-cred-row">
+                      <span className="demo-role-label">{role}</span>
+                      <span className="demo-cred-value">{cred}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

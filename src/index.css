@@ -250,6 +250,53 @@ a { text-decoration: none; }
   flex-shrink: 0;
 }
 
+.login-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.dev-login-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.dev-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.dev-toggle-btn:hover { color: var(--text-secondary); background: var(--bg-card); }
+
+.dev-login-section {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
 .login-sso-hint {
   color: var(--text-secondary);
   font-size: 13px;
