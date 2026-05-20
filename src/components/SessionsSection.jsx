@@ -6,6 +6,7 @@ import AttendanceQRModal from './AttendanceQRModal'
 import {
   fetchAllPlans,
   updateAttendanceStatus,
+  deleteWorkoutPlan,
   subscribeToWorkoutChanges,
   todayString,
 } from '../services/workoutService'
@@ -16,14 +17,14 @@ function formatGroupDate(dateStr) {
   return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** Shared Sessions section used by Coach (canAdd=true) and Captain (canAdd=false) */
-export default function SessionsSection({ canAdd = false }) {
+/** Shared Sessions section used by Coach (canAdd, canDelete) and Captain (canDeleteAttendance) */
+export default function SessionsSection({ canAdd = false, canDelete = false, canDeleteAttendance = false }) {
   const { user } = useAuth()
   const [plans,    setPlans]    = useState([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [qrModal,  setQrModal]  = useState(null) // { planId, phase, title }
+  const [qrModal,  setQrModal]  = useState(null)
 
   const today = todayString()
 
@@ -49,18 +50,26 @@ export default function SessionsSection({ canAdd = false }) {
   async function handleStatusUpdate(planId, newStatus) {
     try {
       await updateAttendanceStatus(planId, newStatus)
-      // Auto-open QR modal when attendance opens
       if (newStatus === 'checkin_open' || newStatus === 'checkout_open') {
         const plan  = plans.find(p => p.id === planId)
         const phase = newStatus === 'checkin_open' ? 'checkin' : 'checkout'
         setQrModal({ planId, phase, title: plan?.title ?? '' })
       }
-      // Auto-close QR modal when attendance closes
       if ((newStatus === 'checkin_done' || newStatus === 'done') && qrModal?.planId === planId) {
         setQrModal(null)
       }
     } catch {
       alert('Failed to update attendance status. Please try again.')
+    }
+  }
+
+  async function handleDeletePlan(planId) {
+    try {
+      await deleteWorkoutPlan(planId)
+      // realtime subscription will reload, but also eager-remove for snappiness
+      setPlans(prev => prev.filter(p => p.id !== planId))
+    } catch {
+      alert('Failed to delete workout plan. Please try again.')
     }
   }
 
@@ -127,8 +136,11 @@ export default function SessionsSection({ canAdd = false }) {
                 key={plan.id}
                 plan={plan}
                 canControl
+                canDelete={canDelete}
+                canDeleteAttendance={canDeleteAttendance}
                 onOpenQR={phase => setQrModal({ planId: plan.id, phase, title: plan.title })}
                 onUpdateStatus={status => handleStatusUpdate(plan.id, status)}
+                onDelete={() => handleDeletePlan(plan.id)}
               />
             ))
           )}
@@ -138,7 +150,14 @@ export default function SessionsSection({ canAdd = false }) {
             <>
               <div className="sessions-group-label" style={{ marginTop: 28 }}>Upcoming</div>
               {upcomingPlans.map(plan => (
-                <WorkoutCard key={plan.id} plan={plan} canControl={false} />
+                <WorkoutCard
+                  key={plan.id}
+                  plan={plan}
+                  canControl={false}
+                  canDelete={canDelete}
+                  canDeleteAttendance={false}
+                  onDelete={() => handleDeletePlan(plan.id)}
+                />
               ))}
             </>
           )}
@@ -148,7 +167,14 @@ export default function SessionsSection({ canAdd = false }) {
             <>
               <div className="sessions-group-label" style={{ marginTop: 28 }}>Recent</div>
               {pastPlans.map(plan => (
-                <WorkoutCard key={plan.id} plan={plan} canControl={false} />
+                <WorkoutCard
+                  key={plan.id}
+                  plan={plan}
+                  canControl={false}
+                  canDelete={canDelete}
+                  canDeleteAttendance={canDeleteAttendance}
+                  onDelete={() => handleDeletePlan(plan.id)}
+                />
               ))}
             </>
           )}

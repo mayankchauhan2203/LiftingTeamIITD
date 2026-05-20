@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchAttendanceForPlan, subscribeToAttendance } from '../services/attendanceService'
+import { fetchAttendanceForPlan, subscribeToAttendance, deleteAttendanceRecord } from '../services/attendanceService'
 
 const STATUS_CONFIG = {
   not_started: {
@@ -38,9 +38,7 @@ function fmtTime(ts) {
 const VARIATION_TYPES = ['Snatch', 'C&J']
 
 function getExerciseName(ex) {
-  // Legacy format: { name, sets, reps, weight }
   if (typeof ex.name === 'string') return ex.name
-  // New format
   const base = ex.type === 'Other' ? (ex.customName || 'Exercise') : (ex.type || 'Exercise')
   if (!VARIATION_TYPES.includes(ex.type)) return base
   if (!ex.variation || ex.variation === 'Standard') return base
@@ -48,17 +46,13 @@ function getExerciseName(ex) {
   return prefix ? `${prefix} ${base}` : base
 }
 
-// Returns array of chip labels, or a single legacy string, or null
 function getSetChips(ex) {
-  // Other type — no sets to show
   if (ex.type === 'Other') return null
-  // Legacy format: { name, sets, reps, weight }
   if (typeof ex.name === 'string') {
     const txt = [ex.sets && `${ex.sets} sets`, ex.reps && `${ex.reps} reps`, ex.weight && `@ ${ex.weight}`]
       .filter(Boolean).join(' · ')
     return txt ? [txt] : null
   }
-  // New format: array of { reps, pct, repeat }
   if (!Array.isArray(ex.sets) || ex.sets.length === 0) return null
   return ex.sets.map(s => {
     const r = s.repeat && Number(s.repeat) > 1 ? Number(s.repeat) : 1
@@ -80,24 +74,38 @@ function formatCardDate(dateStr) {
 }
 
 /* ── Attendance list (coach / captain only) ───────────── */
-function AttendanceList({ planId }) {
+function AttendanceList({ planId, canDeleteAttendance }) {
   const [records, setRecords] = useState([])
 
-  useEffect(() => {
+  async function load() {
     fetchAttendanceForPlan(planId).then(d => setRecords(d || [])).catch(() => {})
-    const channel = subscribeToAttendance(planId, () => {
-      fetchAttendanceForPlan(planId).then(d => setRecords(d || [])).catch(() => {})
-    })
+  }
+
+  useEffect(() => {
+    load()
+    const channel = subscribeToAttendance(planId, load)
     return () => supabase.removeChannel(channel)
   }, [planId])
 
-  // Merge checkin + checkout rows into one row per athlete
+  async function handleDeleteRecord(id) {
+    if (!window.confirm('Remove this attendance record?')) return
+    try {
+      await deleteAttendanceRecord(id)
+      load()
+    } catch {
+      alert('Failed to delete attendance record. Please try again.')
+    }
+  }
+
+  // Merge checkin + checkout rows into one row per athlete, keeping IDs
   const byUser = {}
   records.forEach(r => {
     if (!byUser[r.user_id]) {
-      byUser[r.user_id] = { name: r.user_name, initials: r.user_initials, checkin: null, checkout: null }
+      byUser[r.user_id] = { name: r.user_name, initials: r.user_initials,
+        checkin: null, checkinId: null, checkout: null, checkoutId: null }
     }
-    byUser[r.user_id][r.phase] = r.marked_at
+    if (r.phase === 'checkin')  { byUser[r.user_id].checkin  = r.marked_at; byUser[r.user_id].checkinId  = r.id }
+    if (r.phase === 'checkout') { byUser[r.user_id].checkout = r.marked_at; byUser[r.user_id].checkoutId = r.id }
   })
   const athletes = Object.values(byUser)
 
@@ -128,14 +136,24 @@ function AttendanceList({ planId }) {
                   </div>
                 </td>
                 <td>
-                  <span className={`att-time ${a.checkin ? 'done' : 'pending'}`}>
-                    {a.checkin ? fmtTime(a.checkin) : '—'}
-                  </span>
+                  <div className="att-time-cell">
+                    <span className={`att-time ${a.checkin ? 'done' : 'pending'}`}>
+                      {a.checkin ? fmtTime(a.checkin) : '—'}
+                    </span>
+                    {canDeleteAttendance && a.checkinId && (
+                      <button className="att-del-btn" title="Remove check-in" onClick={() => handleDeleteRecord(a.checkinId)}>✕</button>
+                    )}
+                  </div>
                 </td>
                 <td>
-                  <span className={`att-time ${a.checkout ? 'done' : 'pending'}`}>
-                    {a.checkout ? fmtTime(a.checkout) : '—'}
-                  </span>
+                  <div className="att-time-cell">
+                    <span className={`att-time ${a.checkout ? 'done' : 'pending'}`}>
+                      {a.checkout ? fmtTime(a.checkout) : '—'}
+                    </span>
+                    {canDeleteAttendance && a.checkoutId && (
+                      <button className="att-del-btn" title="Remove check-out" onClick={() => handleDeleteRecord(a.checkoutId)}>✕</button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -147,9 +165,18 @@ function AttendanceList({ planId }) {
 }
 
 /* ── WorkoutCard ──────────────────────────────────────── */
-export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpdateStatus }) {
+export default function WorkoutCard({
+  plan,
+  canControl         = false,
+  canDelete          = false,
+  canDeleteAttendance = false,
+  onOpenQR,
+  onUpdateStatus,
+  onDelete,
+}) {
   const cfg = STATUS_CONFIG[plan.attendance_status] ?? STATUS_CONFIG.not_started
   const hasAttendance = plan.attendance_status !== 'not_started'
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
     <div className="workout-card">
@@ -158,12 +185,30 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
         <div className="workout-card-meta">
           <span className="workout-card-date">{formatCardDate(plan.date)}</span>
           <span className={`badge ${cfg.badgeCls}`}>{cfg.label}</span>
+          {canDelete && (
+            <button
+              className="delete-plan-btn"
+              title="Delete workout plan"
+              onClick={() => setConfirmDelete(true)}
+            >🗑</button>
+          )}
         </div>
         <h3 className="workout-card-title">{plan.title}</h3>
         {plan.description && (
           <p className="workout-card-desc">{plan.description}</p>
         )}
       </div>
+
+      {/* Inline delete confirm */}
+      {confirmDelete && (
+        <div className="delete-confirm-bar">
+          <span>Delete this plan and all its attendance records?</span>
+          <div className="delete-confirm-actions">
+            <button className="btn-secondary" onClick={() => setConfirmDelete(false)}>Cancel</button>
+            <button className="btn-danger" onClick={() => { setConfirmDelete(false); onDelete?.() }}>Delete</button>
+          </div>
+        </div>
+      )}
 
       {/* Exercise list */}
       {plan.exercises && plan.exercises.length > 0 && (
@@ -173,7 +218,6 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
             return (
               <div className="exercise-row" key={i}>
                 <span className="exercise-name">{getExerciseName(ex)}</span>
-                {/* Set chips */}
                 {chips && chips.length > 0 && (
                   <div className="exercise-set-chips">
                     {chips.map((chip, ci) => (
@@ -181,11 +225,9 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
                     ))}
                   </div>
                 )}
-                {/* Free-text description (Other type) */}
                 {ex.customDescription && (
                   <span className="exercise-notes">{ex.customDescription}</span>
                 )}
-                {/* Coach note */}
                 {ex.notes && (
                   <span className="exercise-coach-note">💬 {ex.notes}</span>
                 )}
@@ -196,8 +238,8 @@ export default function WorkoutCard({ plan, canControl = false, onOpenQR, onUpda
       )}
 
       {/* Attendance list — coach / captain only, once check-in has started */}
-      {canControl && hasAttendance && (
-        <AttendanceList planId={plan.id} />
+      {(canControl || canDeleteAttendance) && hasAttendance && (
+        <AttendanceList planId={plan.id} canDeleteAttendance={canDeleteAttendance} />
       )}
 
       {/* Action buttons */}

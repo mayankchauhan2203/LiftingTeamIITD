@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import SessionsSection from '../components/SessionsSection'
-import { ATHLETES, TEAM_ACTIVITY, PROGRAMS, UPCOMING_SESSIONS } from '../data/mockData'
+import TeamManagement from '../components/TeamManagement'
+import { TEAM_ACTIVITY, PROGRAMS, UPCOMING_SESSIONS } from '../data/mockData'
 
 /* ── nav config ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -26,16 +27,6 @@ const BOTTOM_NAV = [
 ]
 
 /* ── helpers ─────────────────────────────────────────── */
-const STATUS_BADGE = {
-  active: <span className="badge badge-green">Active</span>,
-  leave:  <span className="badge badge-gold">On Leave</span>,
-  new:    <span className="badge badge-blue">New</span>,
-}
-const PROGRAM_BADGE = {
-  Strength:  <span className="badge badge-gold">Strength</span>,
-  Technique: <span className="badge badge-blue">Technique</span>,
-  Beginner:  <span className="badge badge-green">Beginner</span>,
-}
 const SESSION_TYPE_BADGE = {
   team:     <span className="badge badge-blue">Team</span>,
   advanced: <span className="badge badge-gold">Adv.</span>,
@@ -70,39 +61,8 @@ function Overview({ onNavigate }) {
             <button className="btn-secondary" onClick={() => onNavigate('athletes')}>View All</button>
           </div>
           <div className="card">
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr><th>Athlete</th><th>Class</th><th>Total</th><th>Status</th></tr>
-                </thead>
-                <tbody>
-                  {ATHLETES.slice(0, 5).map(a => (
-                    <tr key={a.id}>
-                      <td>
-                        <div className="athlete-cell">
-                          <div className={`athlete-avatar-sm${a.role === 'captain' ? ' captain-av' : ''}`}>{a.initials}</div>
-                          <span>
-                            {a.name}
-                            {a.role === 'captain' && <span className="badge-captain" style={{ marginLeft: 5 }}>C</span>}
-                          </span>
-                        </div>
-                      </td>
-                      <td>{a.weightClass}</td>
-                      <td><strong>{a.total} kg</strong></td>
-                      <td>{STATUS_BADGE[a.status]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="section-header"><h2>Recent Activity</h2></div>
-          <div className="card">
             <div className="activity-list">
-              {TEAM_ACTIVITY.map(item => (
+              {TEAM_ACTIVITY.slice(0, 5).map(item => (
                 <div className="activity-item" key={item.id}>
                   <div className={`activity-dot ${item.color}`} />
                   <div className="activity-text">
@@ -116,9 +76,7 @@ function Overview({ onNavigate }) {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid-2">
         <div>
           <div className="section-header"><h2>Upcoming Sessions</h2></div>
           <div className="card">
@@ -140,59 +98,19 @@ function Overview({ onNavigate }) {
             </div>
           </div>
         </div>
+      </div>
 
-        <div>
-          <div className="section-header"><h2>Program Progress</h2></div>
-          <div className="card">
-            {PROGRAMS.map(p => (
-              <div className="progress-wrap" key={p.label}>
-                <div className="progress-label"><span>{p.label}</span><span>{p.pct}%</span></div>
-                <div className="progress-bar">
-                  <div className={`progress-fill${p.colorClass ? ` ${p.colorClass}` : ''}`} style={{ width: `${p.pct}%` }} />
-                </div>
+      <div>
+        <div className="section-header"><h2>Program Progress</h2></div>
+        <div className="card">
+          {PROGRAMS.map(p => (
+            <div className="progress-wrap" key={p.label}>
+              <div className="progress-label"><span>{p.label}</span><span>{p.pct}%</span></div>
+              <div className="progress-bar">
+                <div className={`progress-fill${p.colorClass ? ` ${p.colorClass}` : ''}`} style={{ width: `${p.pct}%` }} />
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-function Athletes() {
-  return (
-    <>
-      <div className="section-header" style={{ marginBottom: 18 }}>
-        <div><h2>All Athletes</h2><p>{ATHLETES.length} registered athletes</p></div>
-        <button className="btn-primary">+ Add Athlete</button>
-      </div>
-      <div className="card">
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr><th>Athlete</th><th>Year</th><th>Class</th><th>Snatch</th><th>C&amp;J</th><th>Total</th><th>Program</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              {ATHLETES.map(a => (
-                <tr key={a.id}>
-                  <td>
-                    <div className="athlete-cell">
-                      <div className={`athlete-avatar-sm${a.role === 'captain' ? ' captain-av' : ''}`}>{a.initials}</div>
-                      <span>
-                        {a.name}
-                        {a.role === 'captain' && <span className="badge-captain" style={{ marginLeft: 5 }}>C</span>}
-                      </span>
-                    </div>
-                  </td>
-                  <td>{a.year}</td><td>{a.weightClass}</td>
-                  <td>{a.snatch} kg</td><td>{a.cj} kg</td>
-                  <td><strong>{a.total} kg</strong></td>
-                  <td>{PROGRAM_BADGE[a.program]}</td>
-                  <td>{STATUS_BADGE[a.status]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            </div>
+          ))}
         </div>
       </div>
     </>
@@ -215,8 +133,8 @@ export default function CoachDashboard() {
   return (
     <Layout navItems={NAV_ITEMS} bottomNavItems={BOTTOM_NAV} activeSection={activeSection} onNavigate={setActiveSection} role="coach">
       {activeSection === 'overview'  && <Overview onNavigate={setActiveSection} />}
-      {activeSection === 'athletes'  && <Athletes />}
-      {activeSection === 'sessions'  && <SessionsSection canAdd />}
+      {activeSection === 'athletes'  && <TeamManagement canEditPR />}
+      {activeSection === 'sessions'  && <SessionsSection canAdd canDelete canDeleteAttendance />}
       {activeSection === 'programs'  && <Placeholder icon="📋" title="Training Programs" description="Create and manage structured training blocks for your athletes." />}
       {activeSection === 'progress'  && <Placeholder icon="📈" title="Progress Reports"   description="View and export detailed athlete progress and lift history." />}
       {activeSection === 'records'   && <Placeholder icon="🏆" title="Team Records"        description="All-time bests, PRs, and competition records for the team." />}

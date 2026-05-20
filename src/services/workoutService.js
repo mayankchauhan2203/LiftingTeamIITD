@@ -52,6 +52,14 @@ export async function updateAttendanceStatus(planId, status) {
   if (error) throw error
 }
 
+export async function deleteWorkoutPlan(planId) {
+  const { error } = await supabase
+    .from('workout_plans')
+    .delete()
+    .eq('id', planId)
+  if (error) { console.error('[deleteWorkoutPlan]', error); throw error }
+}
+
 /** Returns a Supabase channel — caller must call supabase.removeChannel(channel) on cleanup */
 export function subscribeToWorkoutChanges(onchange) {
   const uid = Math.random().toString(36).slice(2, 7)

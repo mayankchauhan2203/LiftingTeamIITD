@@ -1571,6 +1571,84 @@ a { text-decoration: none; }
 .att-time.done    { color: var(--green); }
 .att-time.pending { color: var(--text-muted); }
 
+/* Attendance cell with optional delete button */
+.att-time-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.att-del-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid rgba(248,81,73,0.4);
+  color: var(--red);
+  border-radius: 4px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.att-table tr:hover .att-del-btn { opacity: 1; }
+.att-del-btn:hover { background: rgba(248,81,73,0.15); }
+
+/* ── Delete workout plan button (in card header) ──────── */
+.delete-plan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid rgba(248,81,73,0.35);
+  color: var(--red);
+  border-radius: 7px;
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.delete-plan-btn:hover { background: rgba(248,81,73,0.12); }
+
+/* Inline confirmation bar */
+.delete-confirm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(248,81,73,0.08);
+  border: 1px solid rgba(248,81,73,0.3);
+  border-radius: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.delete-confirm-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.btn-danger {
+  padding: 6px 14px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-danger:hover { opacity: 0.85; }
+
 /* ─────────────────────────────────────────────────────── */
 
 .workout-actions {
@@ -1580,6 +1658,155 @@ a { text-decoration: none; }
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+
+/* =====================================================
+   TEAM MANAGEMENT
+   ===================================================== */
+
+/* Two-column form row */
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Optional label suffix */
+.label-opt {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Row action buttons */
+.tm-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btn-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0;
+}
+.btn-icon-sm:hover { background: var(--bg-card); }
+
+.btn-icon-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid rgba(248,81,73,0.35);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.data-table tr:hover .btn-icon-red { opacity: 1; }
+.btn-icon-red:hover { background: rgba(248,81,73,0.12); }
+
+/* Small table action buttons */
+.btn-sm-outline {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-sm-outline:hover { background: var(--bg-card); color: var(--text-primary); border-color: var(--text-muted); }
+
+.btn-sm-orange {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid rgba(212,160,23,0.5);
+  background: rgba(212,160,23,0.1);
+  color: var(--accent-gold-light);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-sm-orange:hover { background: rgba(212,160,23,0.2); }
+
+/* Athlete details modal */
+.detail-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 20px 0 8px;
+}
+.detail-section-title:first-child { margin-top: 0; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 6px 12px;
+  align-items: center;
+}
+.detail-label { font-size: 13px; color: var(--text-muted); }
+.detail-value { font-size: 14px; color: var(--text-primary); }
+
+/* Approve request modal */
+.change-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  margin-bottom: 8px;
+}
+.change-field { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.change-values { display: flex; align-items: center; gap: 10px; }
+.change-old { font-size: 13px; color: var(--text-muted); text-decoration: line-through; }
+.change-arrow { font-size: 13px; color: var(--text-muted); }
+.change-new { font-size: 14px; font-weight: 600; color: var(--green); }
+
+/* Join request row in modal */
+.join-req-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.join-req-row:last-child { border-bottom: none; }
+
+/* PR edit modal helpers */
+.pr-edit-hint { display: flex; gap: 6px; align-items: center; }
+.pr-total-preview {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.pr-total-preview strong { color: var(--accent-gold-light); font-size: 15px; }
 
 /* =====================================================
    MODAL (WorkoutPlanForm)

@@ -32,6 +32,14 @@ export async function fetchUserAttendanceForPlan(planId, userId) {
   return data
 }
 
+export async function deleteAttendanceRecord(id) {
+  const { error } = await supabase
+    .from('attendance')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
 /** Returns a Supabase channel — caller must call supabase.removeChannel(channel) on cleanup */
 export function subscribeToAttendance(planId, onchange) {
   const uid = Math.random().toString(36).slice(2, 7)
