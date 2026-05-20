@@ -2,9 +2,11 @@ import { createContext, useContext, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { USERS } from '../data/mockData'
 
-const IITD_AUTH_URL = 'https://auth.devclub.in/api/oauth/authorize'
-const CLIENT_ID     = import.meta.env.VITE_IITD_CLIENT_ID
-const SERVER_URL    = import.meta.env.VITE_SERVER_URL || '/api'
+const IITD_AUTH_URL  = 'https://auth.devclub.in/api/oauth/authorize'
+const CLIENT_ID      = import.meta.env.VITE_IITD_CLIENT_ID
+const SERVER_URL     = import.meta.env.VITE_SERVER_URL || '/api'
+// Must match IITD_REDIRECT_URI on the server and the URI registered with devclub
+const REDIRECT_URI   = import.meta.env.VITE_IITD_REDIRECT_URI || `${window.location.origin}/auth/callback`
 
 function generateCodeVerifier() {
   const arr = new Uint8Array(32)
@@ -49,15 +51,14 @@ export function AuthProvider({ children }) {
   }
 
   async function loginWithIITD() {
-    const verifier    = generateCodeVerifier()
-    const challenge   = await generateCodeChallenge(verifier)
-    const state       = crypto.randomUUID()
-    const redirectUri = `${window.location.origin}/auth/callback`
+    const verifier  = generateCodeVerifier()
+    const challenge = await generateCodeChallenge(verifier)
+    const state     = crypto.randomUUID()
     sessionStorage.setItem('pkce_verifier', verifier)
     sessionStorage.setItem('pkce_state',    state)
     const params = new URLSearchParams({
       client_id:             CLIENT_ID,
-      redirect_uri:          redirectUri,
+      redirect_uri:          REDIRECT_URI,
       response_type:         'code',
       scope:                 'openid profile email',
       code_challenge:        challenge,
@@ -68,11 +69,10 @@ export function AuthProvider({ children }) {
   }
 
   async function completeLogin(code, codeVerifier) {
-    const redirectUri = `${window.location.origin}/auth/callback`
     const res = await fetch(`${SERVER_URL}/auth/iitd`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ code, code_verifier: codeVerifier, redirect_uri: redirectUri }),
+      body:    JSON.stringify({ code, code_verifier: codeVerifier }),
     })
     if (!res.ok) {
       const e = await res.json().catch(() => ({}))
