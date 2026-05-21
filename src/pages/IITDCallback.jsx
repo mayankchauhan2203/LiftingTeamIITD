@@ -1,18 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function IITDCallback() {
   const { completeLogin } = useAuth()
   const navigate = useNavigate()
-  const ran = useRef(false)
 
   useEffect(() => {
-    if (ran.current) return
-    ran.current = true
-
     const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
+    const code  = params.get('code')
     const state = params.get('state')
     const error = params.get('error')
 
@@ -21,12 +17,16 @@ export default function IITDCallback() {
       return
     }
 
-    const savedState = sessionStorage.getItem('pkce_state')
+    // Claim verifier synchronously before any await — prevents React StrictMode
+    // double-invocation from sending the auth code twice.
     const verifier = sessionStorage.getItem('pkce_verifier')
-    sessionStorage.removeItem('pkce_state')
+    if (!verifier) return  // already consumed by first invocation
     sessionStorage.removeItem('pkce_verifier')
 
-    if (state !== savedState) {
+    const savedState = sessionStorage.getItem('pkce_state')
+    sessionStorage.removeItem('pkce_state')
+
+    if (!savedState || state !== savedState) {
       navigate('/?error=state_mismatch', { replace: true })
       return
     }
