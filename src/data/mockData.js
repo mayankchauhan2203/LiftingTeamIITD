@@ -1,6 +1,6 @@
 export const USERS = [
   {
-    username: 'coach_verma',
+    username: 'coach',
     password: 'coach123',
     role: 'coach',
     name: 'Coach R. Verma',

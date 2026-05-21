@@ -13,7 +13,8 @@ import {
   fetchTeamMemberByKerberos, updateAthleteStats, createPRChangeRequest,
   fetchJoinRequestByKerberos, createJoinRequest,
 } from '../services/teamService'
-import { ATHLETES, UPCOMING_SESSIONS } from '../data/mockData'
+import { fetchTeamMembers, fetchAthleteMonthlyStats } from '../services/teamService'
+import { fetchUpcomingSessions } from '../services/workoutService'
 
 /* ── nav config ─────────────────────────────────────── */
 const BASE_NAV = [
@@ -202,13 +203,24 @@ function Schedule({ user, onScanQR }) {
 }
 
 /* ── Overview section ────────────────────────────────── */
-function Overview({ user, onNavigate, onScanQR }) {
+function Overview({ user, dbProfile, onNavigate, onScanQR }) {
   const isCapt = user.role === 'captain'
   const { plan, myRecords } = useTodayPlan(user.username)
+  const [upcoming,      setUpcoming]      = useState([])
+  const [monthlyStats,  setMonthlyStats]  = useState(null)
 
-  const stats = isCapt
-    ? { snatch: 112, cj: 134, bodyWeight: 71.4, weightClass: '73kg' }
-    : { snatch: user.bestSnatch ?? 95, cj: user.bestCJ ?? 103, bodyWeight: user.bodyWeight ?? 60.2, weightClass: user.weightClass ?? '61kg' }
+  useEffect(() => {
+    fetchUpcomingSessions(3).then(setUpcoming).catch(() => {})
+    if (user.username) {
+      fetchAthleteMonthlyStats(user.username).then(setMonthlyStats).catch(() => {})
+    }
+  }, [user.username])
+
+  const snatch      = dbProfile?.snatch_pr      ?? null
+  const cj          = dbProfile?.cj_pr          ?? null
+  const bodyWeight  = dbProfile?.body_weight    ?? null
+  const weightClass = dbProfile?.weight_class   ?? null
+  const total       = snatch != null && cj != null ? snatch + cj : null
 
   const hasCheckin  = myRecords.some(r => r.phase === 'checkin')
   const hasCheckout = myRecords.some(r => r.phase === 'checkout')
@@ -231,33 +243,50 @@ function Overview({ user, onNavigate, onScanQR }) {
       {/* Personal bests */}
       <div className="section-header" style={{ marginBottom: 12 }}>
         <h2>Personal Bests</h2>
-        <span className="badge badge-green">↑ 3 PRs this month</span>
       </div>
       <div className="lifts-grid">
         <div className="lift-card">
           <div className="lift-name">Best Snatch</div>
-          <div className="lift-value">{stats.snatch}<small> kg</small></div>
-          <div className="lift-change">↑ +3kg from last month</div>
+          <div className="lift-value">{snatch ?? '—'}{snatch != null && <small> kg</small>}</div>
         </div>
         <div className="lift-card">
           <div className="lift-name">Best C&amp;J</div>
-          <div className="lift-value">{stats.cj}<small> kg</small></div>
-          <div className="lift-change">↑ +2kg from last month</div>
+          <div className="lift-value">{cj ?? '—'}{cj != null && <small> kg</small>}</div>
         </div>
         <div className="lift-card">
           <div className="lift-name">Total</div>
-          <div className="lift-value">{stats.snatch + stats.cj}<small> kg</small></div>
-          <div className="lift-change season">Season best</div>
+          <div className="lift-value">{total ?? '—'}{total != null && <small> kg</small>}</div>
+          {total != null && <div className="lift-change season">Olympic total</div>}
         </div>
       </div>
 
       {/* Secondary stats */}
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         {[
-          { label: 'Body Weight',         icon: '⚖️', value: stats.bodyWeight, unit: 'kg', note: `${stats.weightClass} category`, cls: 'neutral' },
-          { label: 'Sessions This Month', icon: '🗓️', value: 14, note: '↑ 2 from last month', cls: 'up' },
-          { label: 'Attendance Rate',     icon: '✅', value: 92,  unit: '%', note: 'Top 3 on team', cls: 'up' },
-          { label: 'Current Program',     icon: '📋', value: 'Strength', note: 'Week 4 of 8', cls: 'neutral', small: true },
+          {
+            label: 'Body Weight', icon: '⚖️',
+            value: bodyWeight != null ? bodyWeight : '—',
+            unit: bodyWeight != null ? 'kg' : '',
+            note: weightClass ? `${weightClass} category` : 'Weight class not set',
+            cls: 'neutral',
+          },
+          {
+            label: 'Weight Class', icon: '🏷️',
+            value: weightClass ?? '—', unit: '',
+            note: 'Competition category', cls: 'neutral', small: true,
+          },
+          {
+            label: 'Sessions This Month', icon: '🗓️',
+            value: monthlyStats ? monthlyStats.sessionsThisMonth : '—', unit: '',
+            note: monthlyStats ? `${monthlyStats.attended} attended` : 'Loading…', cls: 'neutral',
+          },
+          {
+            label: 'Attendance Rate', icon: '✅',
+            value: monthlyStats?.attendanceRate != null ? monthlyStats.attendanceRate : '—',
+            unit: monthlyStats?.attendanceRate != null ? '%' : '',
+            note: monthlyStats ? 'This month' : 'Loading…',
+            cls: monthlyStats?.attendanceRate >= 75 ? 'up' : 'neutral',
+          },
         ].map(s => (
           <div className="stat-card" key={s.label}>
             <div className="stat-card-header">
@@ -294,29 +323,35 @@ function Overview({ user, onNavigate, onScanQR }) {
         </div>
       )}
 
-      {/* Upcoming sessions (mock) */}
+      {/* Upcoming Sessions */}
       <div className="section-header" style={{ marginBottom: 14 }}>
         <h2>Upcoming Sessions</h2>
       </div>
       <div className="card">
-        <div className="schedule-list">
-          {UPCOMING_SESSIONS.map(s => (
-            <div className="schedule-item" key={s.id}>
-              <div className="schedule-date">
-                <div className="day">{s.day}</div>
-                <div className="month">{s.month}</div>
-              </div>
-              <div className="schedule-divider" />
-              <div className="schedule-info">
-                <div className="session-name">{s.name}</div>
-                <div className="session-details">{s.time} · {s.venue}</div>
-              </div>
-              <span className={`badge ${s.type === 'team' ? 'badge-blue' : 'badge-gold'}`}>
-                {s.type === 'team' ? 'Team' : 'Adv.'}
-              </span>
-            </div>
-          ))}
-        </div>
+        {upcoming.length === 0 ? (
+          <div style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+            No upcoming sessions scheduled.
+          </div>
+        ) : (
+          <div className="schedule-list">
+            {upcoming.map(s => {
+              const d = new Date(s.date + 'T00:00:00')
+              return (
+                <div className="schedule-item" key={s.id}>
+                  <div className="schedule-date">
+                    <div className="day">{d.getDate()}</div>
+                    <div className="month">{d.toLocaleString('en-IN', { month: 'short' })}</div>
+                  </div>
+                  <div className="schedule-divider" />
+                  <div className="schedule-info">
+                    <div className="session-name">{s.title}</div>
+                    {s.description && <div className="session-details">{s.description}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </>
   )
@@ -324,37 +359,55 @@ function Overview({ user, onNavigate, onScanQR }) {
 
 /* ── Other sections ──────────────────────────────────── */
 function TeamRoster() {
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTeamMembers()
+      .then(setMembers)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <>
       <div className="section-header" style={{ marginBottom: 18 }}>
         <div><h2>Team Roster</h2><p>IIT Delhi Weightlifting — Season 2025–26</p></div>
       </div>
       <div className="card">
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead><tr><th>Athlete</th><th>Year</th><th>Class</th><th>Snatch</th><th>C&amp;J</th><th>Total</th><th>Status</th></tr></thead>
-            <tbody>
-              {ATHLETES.map(a => (
-                <tr key={a.id}>
-                  <td>
-                    <div className="athlete-cell">
-                      <div className={`athlete-avatar-sm${a.role === 'captain' ? ' captain-av' : ''}`}>{a.initials}</div>
-                      <span>{a.name}{a.role === 'captain' && <span className="badge-captain" style={{ marginLeft: 5 }}>C</span>}</span>
-                    </div>
-                  </td>
-                  <td>{a.year}</td><td>{a.weightClass}</td>
-                  <td>{a.snatch} kg</td><td>{a.cj} kg</td>
-                  <td><strong>{a.total} kg</strong></td>
-                  <td>
-                    {a.status === 'active' && <span className="badge badge-green">Active</span>}
-                    {a.status === 'leave'  && <span className="badge badge-gold">On Leave</span>}
-                    {a.status === 'new'    && <span className="badge badge-blue">New</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading…</div>
+        ) : members.length === 0 ? (
+          <div style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>No team members found.</div>
+        ) : (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr><th>Athlete</th><th>Year</th><th>Class</th><th>Snatch</th><th>C&amp;J</th><th>Total</th></tr>
+              </thead>
+              <tbody>
+                {members.map(a => {
+                  const total = (a.snatch_pr && a.cj_pr) ? a.snatch_pr + a.cj_pr : null
+                  return (
+                    <tr key={a.id}>
+                      <td>
+                        <div className="athlete-cell">
+                          <div className={`athlete-avatar-sm${a.role === 'captain' ? ' captain-av' : ''}`}>{a.initials}</div>
+                          <span>{a.name}{a.role === 'captain' && <span className="badge-captain" style={{ marginLeft: 5 }}>C</span>}</span>
+                        </div>
+                      </td>
+                      <td>{a.year ?? '—'}</td>
+                      <td>{a.weight_class ?? '—'}</td>
+                      <td>{a.snatch_pr != null ? `${a.snatch_pr} kg` : '—'}</td>
+                      <td>{a.cj_pr     != null ? `${a.cj_pr} kg`     : '—'}</td>
+                      <td>{total != null ? <strong>{total} kg</strong> : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   )
@@ -872,7 +925,7 @@ export default function AthleteDashboard() {
         />
       )}
 
-      {activeSection === 'overview'  && <Overview user={user} onNavigate={setActiveSection} onScanQR={() => setShowScanner(true)} />}
+      {activeSection === 'overview'  && <Overview user={user} dbProfile={dbProfile} onNavigate={setActiveSection} onScanQR={() => setShowScanner(true)} />}
       {activeSection === 'schedule'  && <Schedule user={user} onScanQR={() => setShowScanner(true)} />}
       {activeSection === 'team'      && <TeamRoster />}
       {activeSection === 'captain-announce'    && <CaptainAnnouncements />}

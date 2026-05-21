@@ -163,3 +163,75 @@ export async function rejectChangeRequest(requestId) {
   if (error) throw error
 }
 
+function relativeTime(iso) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return days === 1 ? 'Yesterday' : `${days} days ago`
+}
+
+export async function fetchRecentActivity() {
+  const [{ data: prs }, { data: joins }] = await Promise.all([
+    supabase.from('pr_change_requests').select('*').eq('status', 'approved')
+      .order('reviewed_at', { ascending: false }).limit(5),
+    supabase.from('join_requests').select('*').eq('status', 'approved')
+      .order('created_at', { ascending: false }).limit(5),
+  ])
+  const activities = [
+    ...(prs  || []).map(r => ({ id: `pr-${r.id}`,   color: 'green',  text: [r.athlete_name, ' updated their lift PRs'], time: r.reviewed_at })),
+    ...(joins || []).map(r => ({ id: `join-${r.id}`, color: 'purple', text: [r.name, ' joined the team'],               time: r.created_at  })),
+  ]
+  activities.sort((a, b) => new Date(b.time) - new Date(a.time))
+  return activities.slice(0, 6).map(a => ({ ...a, time: relativeTime(a.time) }))
+}
+
+export async function fetchCoachStats() {
+  const now = new Date()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const [membersRes, sessionsRes, prsRes, pendingPRRes, pendingJoinRes] = await Promise.all([
+    supabase.from('team_members').select('id', { count: 'exact', head: true }),
+    supabase.from('workout_plans').select('id', { count: 'exact', head: true })
+      .gte('date', monday.toISOString().slice(0, 10))
+      .lte('date', sunday.toISOString().slice(0, 10)),
+    supabase.from('pr_change_requests').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved').gte('reviewed_at', startOfMonth.toISOString()),
+    supabase.from('pr_change_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('join_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+  ])
+  return {
+    totalAthletes:    membersRes.count    ?? 0,
+    sessionsThisWeek: sessionsRes.count   ?? 0,
+    newPRsThisMonth:  prsRes.count        ?? 0,
+    pendingApprovals: (pendingPRRes.count ?? 0) + (pendingJoinRes.count ?? 0),
+  }
+}
+
+export async function fetchAthleteMonthlyStats(kerberosId) {
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+  const monthStr = startOfMonth.toISOString().slice(0, 10)
+
+  const [sessionsRes, attendedRes] = await Promise.all([
+    supabase.from('workout_plans').select('id', { count: 'exact', head: true }).gte('date', monthStr),
+    supabase.from('attendance').select('id', { count: 'exact', head: true })
+      .eq('user_id', kerberosId).eq('phase', 'checkin').gte('marked_at', startOfMonth.toISOString()),
+  ])
+  const total    = sessionsRes.count  ?? 0
+  const attended = attendedRes.count  ?? 0
+  return {
+    sessionsThisMonth: total,
+    attended,
+    attendanceRate: total > 0 ? Math.round((attended / total) * 100) : null,
+  }
+}
+

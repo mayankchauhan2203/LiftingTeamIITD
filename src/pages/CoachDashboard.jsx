@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import SessionsSection from '../components/SessionsSection'
 import TeamManagement from '../components/TeamManagement'
-import { TEAM_ACTIVITY, PROGRAMS, UPCOMING_SESSIONS } from '../data/mockData'
+import { fetchUpcomingSessions } from '../services/workoutService'
+import { fetchRecentActivity, fetchCoachStats, fetchPendingRequests, fetchPendingJoinRequests } from '../services/teamService'
 
 /* ── nav config ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -27,29 +28,60 @@ const BOTTOM_NAV = [
 ]
 
 /* ── helpers ─────────────────────────────────────────── */
-const SESSION_TYPE_BADGE = {
-  team:     <span className="badge badge-blue">Team</span>,
-  advanced: <span className="badge badge-gold">Adv.</span>,
+function formatSessionDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return {
+    day:   d.getDate(),
+    month: d.toLocaleString('en-IN', { month: 'short' }),
+  }
 }
 
 /* ── sub-sections ────────────────────────────────────── */
 function Overview({ onNavigate }) {
+  const [stats,    setStats]    = useState({ totalAthletes: 0, sessionsThisWeek: 0, newPRsThisMonth: 0, pendingApprovals: 0 })
+  const [activity, setActivity] = useState([])
+  const [upcoming, setUpcoming] = useState([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [coachStats, recentActivity, upcomingSessions] = await Promise.all([
+          fetchCoachStats(),
+          fetchRecentActivity(),
+          fetchUpcomingSessions(3),
+        ])
+        setStats(coachStats)
+        setActivity(recentActivity)
+        setUpcoming(upcomingSessions)
+      } catch (e) {
+        console.error('[CoachOverview]', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const statCards = [
+    { label: 'Total Athletes',     icon: '👥', value: stats.totalAthletes,    sub: 'Registered team members' },
+    { label: 'Sessions This Week', icon: '🗓️', value: stats.sessionsThisWeek, sub: 'Scheduled this week'     },
+    { label: 'New PRs This Month', icon: '🏆', value: stats.newPRsThisMonth,  sub: 'Coach-approved PRs'      },
+    { label: 'Pending Approvals',  icon: '⏳', value: stats.pendingApprovals,  sub: 'Awaiting your review',
+      cls: stats.pendingApprovals > 0 ? 'up' : 'neutral' },
+  ]
+
   return (
     <>
       <div className="stats-grid">
-        {[
-          { label: 'Total Athletes',     icon: '👥', value: 14, change: '↑ 2 new this semester', cls: 'up'      },
-          { label: 'Active Programs',    icon: '📋', value: 3,  change: 'Strength, Technique, Beginner', cls: 'neutral' },
-          { label: 'Sessions This Week', icon: '🗓️', value: 5, change: '↑ 1 from last week',    cls: 'up'      },
-          { label: 'New PRs This Month', icon: '🏆', value: 8,  change: '↑ 3 from last month',  cls: 'up'      },
-        ].map(s => (
+        {statCards.map(s => (
           <div className="stat-card" key={s.label}>
             <div className="stat-card-header">
               <span className="stat-label">{s.label}</span>
               <span className="stat-icon">{s.icon}</span>
             </div>
-            <div className="stat-value">{s.value}</div>
-            <div className={`stat-change ${s.cls}`}>{s.change}</div>
+            <div className="stat-value">{loading ? '—' : s.value}</div>
+            <div className={`stat-change ${s.cls ?? 'neutral'}`}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -57,60 +89,69 @@ function Overview({ onNavigate }) {
       <div className="grid-2">
         <div>
           <div className="section-header">
-            <div><h2>Team Roster</h2><p>Active athletes this semester</p></div>
-            <button className="btn-secondary" onClick={() => onNavigate('athletes')}>View All</button>
+            <div><h2>Recent Activity</h2><p>Latest team updates</p></div>
+            <button className="btn-secondary" onClick={() => onNavigate('athletes')}>View Athletes</button>
           </div>
           <div className="card">
-            <div className="activity-list">
-              {TEAM_ACTIVITY.slice(0, 5).map(item => (
-                <div className="activity-item" key={item.id}>
-                  <div className={`activity-dot ${item.color}`} />
-                  <div className="activity-text">
-                    {item.text.map((part, i) =>
-                      i === 0 || i === 2 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
-                    )}
+            {loading ? (
+              <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading…</div>
+            ) : activity.length === 0 ? (
+              <div style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                No recent activity yet.
+              </div>
+            ) : (
+              <div className="activity-list">
+                {activity.map(item => (
+                  <div className="activity-item" key={item.id}>
+                    <div className={`activity-dot ${item.color}`} />
+                    <div className="activity-text">
+                      {item.text.map((part, i) =>
+                        i % 2 === 0 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+                      )}
+                    </div>
+                    <div className="activity-time">{item.time}</div>
                   </div>
-                  <div className="activity-time">{item.time}</div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div>
-          <div className="section-header"><h2>Upcoming Sessions</h2></div>
-          <div className="card">
-            <div className="schedule-list">
-              {UPCOMING_SESSIONS.map(s => (
-                <div className="schedule-item" key={s.id}>
-                  <div className="schedule-date">
-                    <div className="day">{s.day}</div>
-                    <div className="month">{s.month}</div>
-                  </div>
-                  <div className="schedule-divider" />
-                  <div className="schedule-info">
-                    <div className="session-name">{s.name}</div>
-                    <div className="session-details">{s.time} · {s.venue} · {s.group}</div>
-                  </div>
-                  {SESSION_TYPE_BADGE[s.type]}
-                </div>
-              ))}
-            </div>
+          <div className="section-header">
+            <h2>Upcoming Sessions</h2>
+            <button className="btn-secondary" onClick={() => onNavigate('sessions')}>View All</button>
           </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="section-header"><h2>Program Progress</h2></div>
-        <div className="card">
-          {PROGRAMS.map(p => (
-            <div className="progress-wrap" key={p.label}>
-              <div className="progress-label"><span>{p.label}</span><span>{p.pct}%</span></div>
-              <div className="progress-bar">
-                <div className={`progress-fill${p.colorClass ? ` ${p.colorClass}` : ''}`} style={{ width: `${p.pct}%` }} />
+          <div className="card">
+            {loading ? (
+              <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading…</div>
+            ) : upcoming.length === 0 ? (
+              <div style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                No upcoming sessions scheduled.
               </div>
-            </div>
-          ))}
+            ) : (
+              <div className="schedule-list">
+                {upcoming.map(s => {
+                  const { day, month } = formatSessionDate(s.date)
+                  return (
+                    <div className="schedule-item" key={s.id}>
+                      <div className="schedule-date">
+                        <div className="day">{day}</div>
+                        <div className="month">{month}</div>
+                      </div>
+                      <div className="schedule-divider" />
+                      <div className="schedule-info">
+                        <div className="session-name">{s.title}</div>
+                        {s.description && (
+                          <div className="session-details">{s.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

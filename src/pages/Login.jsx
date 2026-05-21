@@ -1,22 +1,15 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
-const DEMO_CREDS = [
-  { role: 'Coach',   cred: 'coach_verma / coach123'  },
-  { role: 'Captain', cred: 'arjun_s / captain123'    },
-  { role: 'Athlete', cred: 'rahul_k / athlete123'    },
-]
-
 export default function Login() {
   const { login, loginWithIITD } = useAuth()
 
-  const [devOpen,       setDevOpen]       = useState(false)
-  const [selectedRole,  setSelectedRole]  = useState('coach')
-  const [username,      setUsername]      = useState('')
-  const [password,      setPassword]      = useState('')
-  const [error,         setError]         = useState('')
-  const [loading,       setLoading]       = useState(false)
-  const [iitdLoading,   setIitdLoading]   = useState(false)
+  const [coachOpen,   setCoachOpen]   = useState(false)
+  const [username,    setUsername]    = useState('')
+  const [password,    setPassword]    = useState('')
+  const [error,       setError]       = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [iitdLoading, setIitdLoading] = useState(false)
 
   async function handleIITDLogin() {
     setIitdLoading(true)
@@ -27,12 +20,12 @@ export default function Login() {
     }
   }
 
-  async function handleDevSubmit(e) {
+  async function handleCoachSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     await new Promise(r => setTimeout(r, 300))
-    const result = login(username.trim(), password, selectedRole)
+    const result = login(username.trim(), password, 'coach')
     if (!result.success) {
       setError(result.error)
       setLoading(false)
@@ -76,35 +69,21 @@ export default function Login() {
           <div className="dev-login-toggle">
             <button
               className="dev-toggle-btn"
-              onClick={() => { setDevOpen(v => !v); setError('') }}
+              onClick={() => { setCoachOpen(v => !v); setError('') }}
             >
-              {devOpen ? '▲' : '▼'} Developer Login
+              {coachOpen ? '▲' : '▼'} Coach Login
             </button>
           </div>
 
-          {devOpen && (
+          {coachOpen && (
             <div className="dev-login-section">
-              <div className="role-tabs" role="tablist">
-                {['coach', 'athlete'].map(r => (
-                  <button
-                    key={r}
-                    className={`role-tab${selectedRole === r ? ' active' : ''}`}
-                    onClick={() => { setSelectedRole(r); setError('') }}
-                    role="tab"
-                    aria-selected={selectedRole === r}
-                  >
-                    {r === 'coach' ? '🎯 Coach' : '💪 Athlete'}
-                  </button>
-                ))}
-              </div>
-
               {error && <div className="login-error">{error}</div>}
 
-              <form onSubmit={handleDevSubmit}>
+              <form onSubmit={handleCoachSubmit}>
                 <div className="form-group">
-                  <label htmlFor="dev-username">Username</label>
+                  <label htmlFor="coach-username">Username</label>
                   <input
-                    id="dev-username"
+                    id="coach-username"
                     type="text"
                     placeholder="Enter username"
                     value={username}
@@ -114,9 +93,9 @@ export default function Login() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="dev-password">Password</label>
+                  <label htmlFor="coach-password">Password</label>
                   <input
-                    id="dev-password"
+                    id="coach-password"
                     type="password"
                     placeholder="Enter password"
                     value={password}
@@ -125,21 +104,9 @@ export default function Login() {
                   />
                 </div>
                 <button type="submit" className="btn-login" disabled={loading}>
-                  {loading ? 'Signing in…' : `Sign In as ${selectedRole === 'coach' ? 'Coach' : 'Athlete'}`}
+                  {loading ? 'Signing in…' : 'Sign In as Coach'}
                 </button>
               </form>
-
-              <div className="login-demo">
-                <strong>Demo Credentials</strong>
-                <div className="demo-creds">
-                  {DEMO_CREDS.map(({ role, cred }) => (
-                    <div key={role} className="demo-cred-row">
-                      <span className="demo-role-label">{role}</span>
-                      <span className="demo-cred-value">{cred}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
         </div>

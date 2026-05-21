@@ -60,6 +60,18 @@ export async function deleteWorkoutPlan(planId) {
   if (error) { console.error('[deleteWorkoutPlan]', error); throw error }
 }
 
+export async function fetchUpcomingSessions(limit = 5) {
+  const today = todayString()
+  const { data, error } = await supabase
+    .from('workout_plans')
+    .select('*')
+    .gte('date', today)
+    .order('date', { ascending: true })
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
+
 /** Returns a Supabase channel — caller must call supabase.removeChannel(channel) on cleanup */
 export function subscribeToWorkoutChanges(onchange) {
   const uid = Math.random().toString(36).slice(2, 7)
