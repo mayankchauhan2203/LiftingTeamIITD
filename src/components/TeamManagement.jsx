@@ -427,7 +427,7 @@ function JoinRequestsModal({ requests, onClose, onDone }) {
 }
 
 /* ── TeamManagement ────────────────────────────────────── */
-export default function TeamManagement({ canEditPR = false }) {
+export default function TeamManagement({ canEditPR = false, canApproveJoins = false }) {
   const [members,         setMembers]         = useState([])
   const [pendingRequests, setPendingRequests]  = useState({})
   const [pendingJoins,    setPendingJoins]    = useState([])
@@ -508,16 +508,16 @@ export default function TeamManagement({ canEditPR = false }) {
           <h2>Athlete Roster</h2>
           <p>{members.length} registered member{members.length !== 1 ? 's' : ''}</p>
         </div>
-        {canEditPR && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {pendingJoins.length > 0 && (
-              <button className="btn-sm-orange" style={{ padding: '8px 14px', fontSize: 13 }} onClick={() => setShowJoinReqs(true)}>
-                Join Requests ({pendingJoins.length})
-              </button>
-            )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(canEditPR || canApproveJoins) && pendingJoins.length > 0 && (
+            <button className="btn-sm-orange" style={{ padding: '8px 14px', fontSize: 13 }} onClick={() => setShowJoinReqs(true)}>
+              Join Requests ({pendingJoins.length})
+            </button>
+          )}
+          {canEditPR && (
             <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add Athlete</button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {loading ? (

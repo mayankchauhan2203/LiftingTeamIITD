@@ -129,6 +129,18 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- ALTER TABLE team_members ADD COLUMN IF NOT EXISTS deadlift_pr NUMERIC;
 -- ALTER TABLE team_members ADD COLUMN IF NOT EXISTS deadlift_pr_updated_at TIMESTAMPTZ;
 
+-- 9. ANNOUNCEMENTS
+CREATE TABLE IF NOT EXISTS announcements (
+  id             UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  title          TEXT        NOT NULL,
+  message        TEXT        NOT NULL,
+  posted_by_name TEXT        NOT NULL,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_created ON announcements(created_at DESC);
+ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
+
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;

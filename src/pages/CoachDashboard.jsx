@@ -4,6 +4,7 @@ import SessionsSection from '../components/SessionsSection'
 import TeamManagement from '../components/TeamManagement'
 import { fetchUpcomingSessions } from '../services/workoutService'
 import { fetchRecentActivity, fetchCoachStats, fetchPendingRequests, fetchPendingJoinRequests } from '../services/teamService'
+import { fetchAnnouncements } from '../services/announcementService'
 
 /* ── nav config ─────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -38,22 +39,25 @@ function formatSessionDate(dateStr) {
 
 /* ── sub-sections ────────────────────────────────────── */
 function Overview({ onNavigate }) {
-  const [stats,    setStats]    = useState({ totalAthletes: 0, sessionsThisWeek: 0, newPRsThisMonth: 0, pendingApprovals: 0 })
-  const [activity, setActivity] = useState([])
-  const [upcoming, setUpcoming] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [stats,         setStats]         = useState({ totalAthletes: 0, sessionsThisWeek: 0, newPRsThisMonth: 0, pendingApprovals: 0 })
+  const [activity,      setActivity]      = useState([])
+  const [upcoming,      setUpcoming]      = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [loading,       setLoading]       = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [coachStats, recentActivity, upcomingSessions] = await Promise.all([
+        const [coachStats, recentActivity, upcomingSessions, announcementList] = await Promise.all([
           fetchCoachStats(),
           fetchRecentActivity(),
           fetchUpcomingSessions(3),
+          fetchAnnouncements(3),
         ])
         setStats(coachStats)
         setActivity(recentActivity)
         setUpcoming(upcomingSessions)
+        setAnnouncements(announcementList)
       } catch (e) {
         console.error('[CoachOverview]', e)
       } finally {
@@ -73,6 +77,22 @@ function Overview({ onNavigate }) {
 
   return (
     <>
+      {announcements.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          {announcements.map(a => (
+            <div key={a.id} className="announcement-card">
+              <div className="announcement-header">
+                <span className="announcement-title">📣 {a.title}</span>
+                <span className="announcement-meta">
+                  {a.posted_by_name} · {new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+              <p className="announcement-body">{a.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="stats-grid">
         {statCards.map(s => (
           <div className="stat-card" key={s.label}>
@@ -175,7 +195,7 @@ export default function CoachDashboard() {
     <Layout navItems={NAV_ITEMS} bottomNavItems={BOTTOM_NAV} activeSection={activeSection} onNavigate={setActiveSection} role="coach">
       {activeSection === 'overview'  && <Overview onNavigate={setActiveSection} />}
       {activeSection === 'athletes'  && <TeamManagement canEditPR />}
-      {activeSection === 'sessions'  && <SessionsSection canAdd canDelete canDeleteAttendance />}
+      {activeSection === 'sessions'  && <SessionsSection canAdd canDelete canDeleteAttendance canDownloadAttendance />}
       {activeSection === 'programs'  && <Placeholder icon="📋" title="Training Programs" description="Create and manage structured training blocks for your athletes." />}
       {activeSection === 'progress'  && <Placeholder icon="📈" title="Progress Reports"   description="View and export detailed athlete progress and lift history." />}
       {activeSection === 'records'   && <Placeholder icon="🏆" title="Team Records"        description="All-time bests, PRs, and competition records for the team." />}

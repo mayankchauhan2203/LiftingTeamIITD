@@ -73,8 +73,36 @@ function formatCardDate(dateStr) {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+function downloadAttendanceCSV(plan, records) {
+  const byUser = {}
+  for (const r of records) {
+    if (!byUser[r.user_id]) byUser[r.user_id] = { name: r.user_name, checkin: null, checkout: null }
+    if (r.phase === 'checkin')  byUser[r.user_id].checkin  = r.marked_at
+    if (r.phase === 'checkout') byUser[r.user_id].checkout = r.marked_at
+  }
+  const rows = [['Name', 'Kerberos ID', 'Check-in', 'Check-out']]
+  for (const [uid, d] of Object.entries(byUser)) {
+    rows.push([
+      d.name, uid,
+      d.checkin  ? new Date(d.checkin).toLocaleString('en-IN')  : '',
+      d.checkout ? new Date(d.checkout).toLocaleString('en-IN') : '',
+    ])
+  }
+  const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url
+  a.download = `attendance_${plan.date}_${plan.title.replace(/\s+/g, '_')}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 /* ── Attendance list (coach / captain only) ───────────── */
-function AttendanceList({ planId, canDeleteAttendance }) {
+function AttendanceList({ plan, canDeleteAttendance, canDownload }) {
+  const planId = plan.id
   const [records, setRecords] = useState([])
 
   async function load() {
@@ -115,7 +143,16 @@ function AttendanceList({ planId, canDeleteAttendance }) {
     <div className="att-list">
       <div className="att-list-header">
         <span>Attendance</span>
-        <span className="att-count">{athletes.length} athlete{athletes.length !== 1 ? 's' : ''}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="att-count">{athletes.length} athlete{athletes.length !== 1 ? 's' : ''}</span>
+          {canDownload && athletes.length > 0 && (
+            <button
+              className="btn-sm-outline"
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => downloadAttendanceCSV(plan, records)}
+            >⬇ CSV</button>
+          )}
+        </div>
       </div>
       <div className="att-table-wrap">
         <table className="att-table">
@@ -167,9 +204,10 @@ function AttendanceList({ planId, canDeleteAttendance }) {
 /* ── WorkoutCard ──────────────────────────────────────── */
 export default function WorkoutCard({
   plan,
-  canControl         = false,
-  canDelete          = false,
-  canDeleteAttendance = false,
+  canControl           = false,
+  canDelete            = false,
+  canDeleteAttendance  = false,
+  canDownloadAttendance = false,
   onOpenQR,
   onUpdateStatus,
   onDelete,
@@ -238,8 +276,8 @@ export default function WorkoutCard({
       )}
 
       {/* Attendance list — coach / captain only, once check-in has started */}
-      {(canControl || canDeleteAttendance) && hasAttendance && (
-        <AttendanceList planId={plan.id} canDeleteAttendance={canDeleteAttendance} />
+      {(canControl || canDeleteAttendance || canDownloadAttendance) && hasAttendance && (
+        <AttendanceList plan={plan} canDeleteAttendance={canDeleteAttendance} canDownload={canDownloadAttendance} />
       )}
 
       {/* Action buttons */}

@@ -15,6 +15,7 @@ import {
 } from '../services/teamService'
 import { fetchTeamMembers, fetchAthleteMonthlyStats } from '../services/teamService'
 import { fetchUpcomingSessions } from '../services/workoutService'
+import { postAnnouncement, fetchAnnouncements } from '../services/announcementService'
 
 /* ── nav config ─────────────────────────────────────── */
 const BASE_NAV = [
@@ -206,11 +207,13 @@ function Schedule({ user, onScanQR }) {
 function Overview({ user, dbProfile, onNavigate, onScanQR }) {
   const isCapt = user.role === 'captain'
   const { plan, myRecords } = useTodayPlan(user.username)
-  const [upcoming,      setUpcoming]      = useState([])
-  const [monthlyStats,  setMonthlyStats]  = useState(null)
+  const [upcoming,       setUpcoming]       = useState([])
+  const [monthlyStats,   setMonthlyStats]   = useState(null)
+  const [announcements,  setAnnouncements]  = useState([])
 
   useEffect(() => {
     fetchUpcomingSessions(3).then(setUpcoming).catch(() => {})
+    fetchAnnouncements(3).then(setAnnouncements).catch(() => {})
     if (user.username) {
       fetchAthleteMonthlyStats(user.username).then(setMonthlyStats).catch(() => {})
     }
@@ -229,6 +232,23 @@ function Overview({ user, dbProfile, onNavigate, onScanQR }) {
 
   return (
     <>
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          {announcements.map(a => (
+            <div key={a.id} className="announcement-card">
+              <div className="announcement-header">
+                <span className="announcement-title">📣 {a.title}</span>
+                <span className="announcement-meta">
+                  {a.posted_by_name} · {new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+              <p className="announcement-body">{a.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Live attendance banner */}
       {canScan && (
         <div className="scan-banner" style={{ marginBottom: 16 }}>
@@ -413,20 +433,42 @@ function TeamRoster() {
   )
 }
 
-function CaptainAnnouncements() {
-  const [title, setTitle] = useState('')
-  const [msg, setMsg]     = useState('')
-  const [posted, setPosted] = useState(false)
-  function handlePost(e) {
-    e.preventDefault(); setPosted(true); setTitle(''); setMsg('')
-    setTimeout(() => setPosted(false), 3000)
+function CaptainAnnouncements({ user }) {
+  const [title,   setTitle]   = useState('')
+  const [msg,     setMsg]     = useState('')
+  const [posting, setPosting] = useState(false)
+  const [posted,  setPosted]  = useState(false)
+  const [error,   setError]   = useState('')
+  const [items,   setItems]   = useState([])
+
+  async function load() {
+    fetchAnnouncements(10).then(setItems).catch(() => {})
   }
+
+  useEffect(() => { load() }, [])
+
+  async function handlePost(e) {
+    e.preventDefault()
+    setPosting(true); setError('')
+    try {
+      await postAnnouncement(title.trim(), msg.trim(), user.name || user.username)
+      setPosted(true); setTitle(''); setMsg('')
+      load()
+      setTimeout(() => setPosted(false), 3000)
+    } catch {
+      setError('Failed to post announcement. Please try again.')
+    } finally {
+      setPosting(false)
+    }
+  }
+
   return (
     <>
       <div className="captain-zone" style={{ marginBottom: 24 }}>
         <div className="captain-zone-header"><span className="crown">👑</span><h2>Post Announcement</h2></div>
+        {error && <div className="alert alert-red" style={{ marginBottom: 12 }}>{error}</div>}
         {posted
-          ? <div className="alert alert-gold" style={{ marginBottom: 0 }}>✅ Posted!</div>
+          ? <div className="alert alert-gold" style={{ marginBottom: 0 }}>✅ Posted! Athletes will see it on their overview.</div>
           : (
             <form onSubmit={handlePost} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -437,25 +479,34 @@ function CaptainAnnouncements() {
                 <label>Message</label>
                 <textarea className="announce-textarea" placeholder="Write your message…" value={msg} onChange={e => setMsg(e.target.value)} required />
               </div>
-              <button type="submit" className="btn-gold" style={{ alignSelf: 'flex-start' }}>📣 Post to Team</button>
+              <button type="submit" className="btn-gold" style={{ alignSelf: 'flex-start' }} disabled={posting}>
+                {posting ? 'Posting…' : '📣 Post to Team'}
+              </button>
             </form>
           )
         }
       </div>
-      <div className="card">
-        <div className="activity-list">
-          {[
-            { color: 'purple', text: "Session rescheduled: Thursday's session moved to Friday 6 AM", time: '2 days ago' },
-            { color: 'gold',   text: 'Inter-IIT qualifier on June 14 — register by June 5',          time: '1 week ago' },
-          ].map((item, i) => (
-            <div className="activity-item" key={i}>
-              <div className={`activity-dot ${item.color}`} />
-              <div className="activity-text">{item.text}</div>
-              <div className="activity-time">{item.time}</div>
+
+      <div className="section-header" style={{ marginBottom: 14 }}>
+        <h2>Past Announcements</h2>
+      </div>
+      {items.length === 0 ? (
+        <div className="no-plan-card"><p style={{ color: 'var(--text-muted)' }}>No announcements yet.</p></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {items.map(a => (
+            <div key={a.id} className="announcement-card">
+              <div className="announcement-header">
+                <span className="announcement-title">📣 {a.title}</span>
+                <span className="announcement-meta">
+                  {new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+              <p className="announcement-body">{a.message}</p>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </>
   )
 }
@@ -928,9 +979,9 @@ export default function AthleteDashboard() {
       {activeSection === 'overview'  && <Overview user={user} dbProfile={dbProfile} onNavigate={setActiveSection} onScanQR={() => setShowScanner(true)} />}
       {activeSection === 'schedule'  && <Schedule user={user} onScanQR={() => setShowScanner(true)} />}
       {activeSection === 'team'      && <TeamRoster />}
-      {activeSection === 'captain-announce'    && <CaptainAnnouncements />}
-      {activeSection === 'captain-attendance'  && <SessionsSection canAdd={false} canDeleteAttendance />}
-      {activeSection === 'captain-team'        && <TeamManagement canEditPR={false} />}
+      {activeSection === 'captain-announce'    && <CaptainAnnouncements user={user} />}
+      {activeSection === 'captain-attendance'  && <SessionsSection canAdd={false} canDeleteAttendance canDownloadAttendance />}
+      {activeSection === 'captain-team'        && <TeamManagement canEditPR={false} canApproveJoins />}
       {activeSection === 'progress' && (
         <MyProgress
           dbProfile={dbProfile}

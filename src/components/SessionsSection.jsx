@@ -18,7 +18,7 @@ function formatGroupDate(dateStr) {
 }
 
 /** Shared Sessions section used by Coach (canAdd, canDelete) and Captain (canDeleteAttendance) */
-export default function SessionsSection({ canAdd = false, canDelete = false, canDeleteAttendance = false }) {
+export default function SessionsSection({ canAdd = false, canDelete = false, canDeleteAttendance = false, canDownloadAttendance = false }) {
   const { user } = useAuth()
   const [plans,    setPlans]    = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -173,6 +173,7 @@ export default function SessionsSection({ canAdd = false, canDelete = false, can
                   canControl={false}
                   canDelete={canDelete}
                   canDeleteAttendance={canDeleteAttendance}
+                  canDownloadAttendance={canDownloadAttendance}
                   onDelete={() => handleDeletePlan(plan.id)}
                 />
               ))}
