@@ -56,9 +56,9 @@ function getSetChips(ex) {
   if (!Array.isArray(ex.sets) || ex.sets.length === 0) return null
   return ex.sets.map(s => {
     const r = s.repeat && Number(s.repeat) > 1 ? Number(s.repeat) : 1
-    const reps = s.reps || '?'
-    const pct  = s.pct  || '?'
-    return `${r}×${reps} @ ${pct}%`
+    const reps = s.reps || ''
+    const pct  = s.pct  || ''
+    return `${reps}×${r} @ ${pct}%`
   })
 }
 
@@ -150,7 +150,7 @@ function AttendanceList({ plan, canDeleteAttendance, canDownload }) {
               className="btn-sm-outline"
               style={{ fontSize: 11, padding: '2px 8px' }}
               onClick={() => downloadAttendanceCSV(plan, records)}
-            >⬇ CSV</button>
+            >⬇ Download Attendance</button>
           )}
         </div>
       </div>
