@@ -138,6 +138,7 @@ export default function SessionsSection({ canAdd = false, canDelete = false, can
                 canControl
                 canDelete={canDelete}
                 canDeleteAttendance={canDeleteAttendance}
+                canDownloadAttendance={canDownloadAttendance}
                 onOpenQR={phase => setQrModal({ planId: plan.id, phase, title: plan.title })}
                 onUpdateStatus={status => handleStatusUpdate(plan.id, status)}
                 onDelete={() => handleDeletePlan(plan.id)}
